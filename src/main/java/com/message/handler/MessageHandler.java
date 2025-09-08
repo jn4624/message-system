@@ -12,6 +12,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.message.dto.Message;
+import com.message.entity.MessageEntity;
+import com.message.repository.MessageRepository;
 import com.message.session.WebSocketSessionManager;
 
 @Component
@@ -20,9 +22,11 @@ public class MessageHandler extends TextWebSocketHandler {
 	private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	private final WebSocketSessionManager webSocketSessionManager;
+	private final MessageRepository messageRepository;
 
-	public MessageHandler(WebSocketSessionManager webSocketSessionManager) {
+	public MessageHandler(WebSocketSessionManager webSocketSessionManager, MessageRepository messageRepository) {
 		this.webSocketSessionManager = webSocketSessionManager;
+		this.messageRepository = messageRepository;
 	}
 
 	@Override
@@ -69,6 +73,10 @@ public class MessageHandler extends TextWebSocketHandler {
 		String payload = message.getPayload();
 		try {
 			Message receivedMessage = objectMapper.readValue(payload, Message.class);
+
+			// 데이터베이스 저장
+			messageRepository.save(new MessageEntity(receivedMessage.username(), receivedMessage.content()));
+
 			webSocketSessionManager.getSessions().forEach(participantSession -> {
 				if (!senderSession.getId().equals(participantSession.getId())) {
 					sendMessage(participantSession, receivedMessage);
