@@ -1,6 +1,9 @@
 package com.message.auth;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
@@ -12,8 +15,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.message.dto.restapi.LoginRequest;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,13 +32,19 @@ public class RestApiLoginAuthFilter extends AbstractAuthenticationProcessingFilt
 	 */
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
-	public RestApiLoginAuthFilter(RequestMatcher requiresAuthenticationRequestMatcher, AuthenticationManager authenticationManager) {
+	public RestApiLoginAuthFilter(
+		RequestMatcher requiresAuthenticationRequestMatcher,
+		AuthenticationManager authenticationManager
+	) {
 		super(requiresAuthenticationRequestMatcher, authenticationManager);
 	}
 
 	// 로그인 요청이 들어오면 호출되기 때문에 인증 과정을 구현해야 한다.
 	@Override
-	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException, IOException {
+	public Authentication attemptAuthentication(
+		HttpServletRequest request,
+		HttpServletResponse response
+	) throws AuthenticationException, IOException {
 		// JSON 요청이 아닐 경우 파싱을 하지 못하니 튕겨낸다.
 		if (!request.getContentType().startsWith(MediaType.APPLICATION_JSON_VALUE)) {
 			throw new AuthenticationServiceException("지원하지 않는 타입: " + request.getContentType());
@@ -49,7 +60,12 @@ public class RestApiLoginAuthFilter extends AbstractAuthenticationProcessingFilt
 
 	// 인증 성공시 호출된다.
 	@Override
-	protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException {
+	protected void successfulAuthentication(
+		HttpServletRequest request,
+		HttpServletResponse response,
+		FilterChain chain,
+		Authentication authResult
+	) throws IOException {
 		/*
 		  - authResult를 context에 연결해줘야 한다.
 		  - 연결해주면 현재 인증상태가 context에 세팅은 되었는데 저장되진 않는다.
@@ -57,21 +73,28 @@ public class RestApiLoginAuthFilter extends AbstractAuthenticationProcessingFilt
 		 */
 		SecurityContext securityContext = SecurityContextHolder.getContext();
 		// 세션 정보에 비밀번호 노출을 피하기 위해
-		((MessageUserDetails) authResult.getPrincipal()).erasePassword();
+		((MessageUserDetails)authResult.getPrincipal()).erasePassword();
 		securityContext.setAuthentication(authResult);
 		// contextRepository에 저장을 해야 인증 상태가 유지된다.
 		HttpSessionSecurityContextRepository contextRepository = new HttpSessionSecurityContextRepository();
 		contextRepository.saveContext(securityContext, request, response);
 
+		String sessionId = request.getSession().getId();
+		String encodedSessionId = Base64.getEncoder().encodeToString(sessionId.getBytes(StandardCharsets.UTF_8));
+
 		response.setStatus(HttpServletResponse.SC_OK);
 		response.setContentType(MediaType.TEXT_PLAIN_VALUE);
-		response.getWriter().write(request.getSession().getId());
+		response.getWriter().write(encodedSessionId);
 		response.getWriter().flush();
 	}
 
 	// 인증 실패시 호출된다.
 	@Override
-	protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException {
+	protected void unsuccessfulAuthentication(
+		HttpServletRequest request,
+		HttpServletResponse response,
+		AuthenticationException failed
+	) throws IOException {
 		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 		response.setContentType(MediaType.TEXT_PLAIN_VALUE);
 		response.setCharacterEncoding("UTF-8");

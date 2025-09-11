@@ -38,14 +38,20 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public AuthenticationManager authenticationManager(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+	public AuthenticationManager authenticationManager(
+		UserDetailsService userDetailsService,
+		PasswordEncoder passwordEncoder
+	) {
 		DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider(userDetailsService);
 		daoAuthenticationProvider.setPasswordEncoder(passwordEncoder);
 		return new ProviderManager(daoAuthenticationProvider);
 	}
 
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, AuthenticationManager authenticationManager) throws Exception {
+	public SecurityFilterChain securityFilterChain(
+		HttpSecurity httpSecurity,
+		AuthenticationManager authenticationManager
+	) throws Exception {
 		PathPatternRequestMatcher loginMatcher = PathPatternRequestMatcher
 			.withDefaults()
 			.matcher(HttpMethod.POST, "/api/v1/auth/login");
@@ -57,7 +63,10 @@ public class SecurityConfig {
 			.formLogin(AbstractHttpConfigurer::disable)
 			.addFilterAt(restApiLoginAuthFilter, UsernamePasswordAuthenticationFilter.class)
 			.authorizeHttpRequests(auth ->
-				auth.requestMatchers("/api/v1/auth/login").permitAll().anyRequest().authenticated())
+				auth.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login")
+					.permitAll()
+					.anyRequest()
+					.authenticated())
 			.logout(logout ->
 				logout.logoutUrl("/api/v1/auth/logout").logoutSuccessHandler(this::logoutHandler));
 
@@ -65,7 +74,11 @@ public class SecurityConfig {
 	}
 
 	// 로그인이 성공해도 호출, 실패해도 호출
-	private void logoutHandler(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
+	private void logoutHandler(
+		HttpServletRequest request,
+		HttpServletResponse response,
+		Authentication authentication
+	) {
 		response.setContentType(MediaType.TEXT_PLAIN_VALUE);
 		response.setCharacterEncoding("UTF-8");
 

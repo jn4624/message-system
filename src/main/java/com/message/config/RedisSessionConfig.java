@@ -5,11 +5,21 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
+import org.springframework.session.FlushMode;
 import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
-@EnableRedisHttpSession(redisNamespace = "message:user_session", maxInactiveIntervalInSeconds = 300) // TTL: 5분
+@EnableRedisHttpSession(
+	redisNamespace = "message:user_session",
+	maxInactiveIntervalInSeconds = 300, // TTL: 5분
+	/*
+	  - ON_SAVE(default): save가 명시적으로 호출될 때 저장
+	  - IMMEDIATE: 즉시 flush
+	 */
+	flushMode = FlushMode.IMMEDIATE
+)
 public class RedisSessionConfig {
 
 	/*

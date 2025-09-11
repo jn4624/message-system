@@ -11,9 +11,14 @@ import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorato
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.message.constants.Constants;
 import com.message.dto.domain.Message;
+import com.message.dto.websocket.inbound.BaseRequest;
+import com.message.dto.websocket.inbound.KeepAliveRequest;
+import com.message.dto.websocket.inbound.MessageRequest;
 import com.message.entity.MessageEntity;
 import com.message.repository.MessageRepository;
+import com.message.service.SessionService;
 import com.message.session.WebSocketSessionManager;
 
 @Component
@@ -21,10 +26,16 @@ public class MessageHandler extends TextWebSocketHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
 	private final ObjectMapper objectMapper = new ObjectMapper();
+	private final SessionService sessionService;
 	private final WebSocketSessionManager webSocketSessionManager;
 	private final MessageRepository messageRepository;
 
-	public MessageHandler(WebSocketSessionManager webSocketSessionManager, MessageRepository messageRepository) {
+	public MessageHandler(
+		SessionService sessionService,
+		WebSocketSessionManager webSocketSessionManager,
+		MessageRepository messageRepository
+	) {
+		this.sessionService = sessionService;
 		this.webSocketSessionManager = webSocketSessionManager;
 		this.messageRepository = messageRepository;
 	}
@@ -68,20 +79,27 @@ public class MessageHandler extends TextWebSocketHandler {
 
 	@Override
 	protected void handleTextMessage(WebSocketSession senderSession, @NonNull TextMessage message) {
-		log.info("Received TextMessage: [{}] from {}", message, senderSession.getId());
-
 		String payload = message.getPayload();
+		log.info("Received TextMessage: [{}] from {}", payload, senderSession.getId());
+
 		try {
-			Message receivedMessage = objectMapper.readValue(payload, Message.class);
+			BaseRequest baseRequest = objectMapper.readValue(payload, BaseRequest.class);
 
-			// 데이터베이스 저장
-			messageRepository.save(new MessageEntity(receivedMessage.username(), receivedMessage.content()));
+			if (baseRequest instanceof MessageRequest messageRequest) {
+				Message receivedMessage = new Message(messageRequest.getUsername(), messageRequest.getContent());
 
-			webSocketSessionManager.getSessions().forEach(participantSession -> {
-				if (!senderSession.getId().equals(participantSession.getId())) {
-					sendMessage(participantSession, receivedMessage);
-				}
-			});
+				// 데이터베이스 저장
+				messageRepository.save(new MessageEntity(receivedMessage.username(), receivedMessage.content()));
+
+				webSocketSessionManager.getSessions().forEach(participantSession -> {
+					if (!senderSession.getId().equals(participantSession.getId())) {
+						sendMessage(participantSession, receivedMessage);
+					}
+				});
+			} else if (baseRequest instanceof KeepAliveRequest) {
+				sessionService.refreshTTL(
+					(String)senderSession.getAttributes().get(Constants.HTTP_SESSION_ID.getValue()));
+			}
 		} catch (Exception e) {
 			String errorMessage = "유효한 프로토콜이 아닙니다.";
 			log.error("errorMessage payload: {} from {}", payload, senderSession.getId());
