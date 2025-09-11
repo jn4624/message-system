@@ -1,6 +1,6 @@
 spring:
   application:
-    name: group-chat-using-db
+    name: group-chat-using-session
   datasource:
     hikari:
       jdbc-url: jdbc:mysql://localhost:13306/message_system
@@ -23,6 +23,12 @@ spring:
   sql:
     init:
       mode: always # prod: never
+  data:
+    redis:
+      host: localhost
+      port: 16379
+      repositories:
+        enabled: false
 #logging:
 #  level:
 #    com.zaxxer.hikari: debug

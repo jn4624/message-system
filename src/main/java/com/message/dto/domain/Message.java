@@ -1,4 +1,4 @@
-package com.message.dto;
+package com.message.dto.domain;
 
 /*
   record 클래스

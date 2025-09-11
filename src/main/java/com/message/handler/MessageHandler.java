@@ -11,7 +11,7 @@ import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorato
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.message.dto.Message;
+import com.message.dto.domain.Message;
 import com.message.entity.MessageEntity;
 import com.message.repository.MessageRepository;
 import com.message.session.WebSocketSessionManager;

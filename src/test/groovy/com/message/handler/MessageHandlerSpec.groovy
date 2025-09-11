@@ -1,7 +1,7 @@
 package com.message.handler
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.message.dto.Message
+import com.message.dto.domain.Message
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.web.socket.TextMessage
