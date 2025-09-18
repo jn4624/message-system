@@ -1,6 +1,7 @@
 package com.message.entity;
 
 import java.util.Objects;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,7 +12,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "message_user")
-public class MessageUserEntity extends BaseEntity {
+public class UserEntity extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,12 +25,19 @@ public class MessageUserEntity extends BaseEntity {
 	@Column(name = "password", nullable = false)
 	private String password;
 
-	public MessageUserEntity() {
+	@Column(name = "connection_invite_code", nullable = false)
+	private String connectionInviteCode;
+
+	@Column(name = "connection_count", nullable = false)
+	private int connectionCount;
+
+	public UserEntity() {
 	}
 
-	public MessageUserEntity(String username, String password) {
+	public UserEntity(String username, String password) {
 		this.username = username;
 		this.password = password;
+		this.connectionInviteCode = UUID.randomUUID().toString().replace("-", "");
 	}
 
 	public Long getUserId() {
@@ -44,11 +52,23 @@ public class MessageUserEntity extends BaseEntity {
 		return password;
 	}
 
+	public String getConnectionInviteCode() {
+		return connectionInviteCode;
+	}
+
+	public int getConnectionCount() {
+		return connectionCount;
+	}
+
+	public void setConnectionCount(int connectionCount) {
+		this.connectionCount = connectionCount;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (o == null || getClass() != o.getClass())
 			return false;
-		MessageUserEntity that = (MessageUserEntity)o;
+		UserEntity that = (UserEntity)o;
 		return Objects.equals(getUsername(), that.getUsername());
 	}
 
@@ -59,7 +79,7 @@ public class MessageUserEntity extends BaseEntity {
 
 	@Override
 	public String toString() {
-		return "MessageUserEntity{userId=%d, username='%s', createdAt=%s, updatedAt=%s}"
+		return "UserEntity{userId=%d, username='%s', createdAt=%s, updatedAt=%s}"
 			.formatted(userId, username, getCreatedAt(), getUpdatedAt());
 	}
 }

@@ -1,7 +1,7 @@
 package com.message.dto.websocket.inbound;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.message.constants.MessageType;
+import com.message.constant.MessageType;
 
 public class KeepAliveRequest extends BaseRequest {
 

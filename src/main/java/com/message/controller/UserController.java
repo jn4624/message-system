@@ -10,25 +10,25 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.message.dto.restapi.UserRegisterRequest;
-import com.message.service.MessageUserService;
+import com.message.service.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-public class MessageUserController {
+public class UserController {
 
-	private static final Logger log = LoggerFactory.getLogger(MessageUserController.class);
-	private final MessageUserService messageUserService;
+	private static final Logger log = LoggerFactory.getLogger(UserController.class);
+	private final UserService userService;
 
-	public MessageUserController(MessageUserService messageUserService) {
-		this.messageUserService = messageUserService;
+	public UserController(UserService userService) {
+		this.userService = userService;
 	}
 
 	@PostMapping("/register")
 	public ResponseEntity<String> register(@RequestBody UserRegisterRequest request) {
 		try {
-			messageUserService.addUser(request.username(), request.password());
+			userService.addUser(request.username(), request.password());
 			return ResponseEntity.ok("User registered");
 		} catch (Exception e) {
 			log.error("Register user failed. cause: {}", e.getMessage());
@@ -39,7 +39,7 @@ public class MessageUserController {
 	@PostMapping("/unregister")
 	public ResponseEntity<String> unregister(HttpServletRequest request) {
 		try {
-			messageUserService.removeUser();
+			userService.removeUser();
 			// 세션 만료 처리
 			request.getSession().invalidate();
 			return ResponseEntity.ok("User unregistered");

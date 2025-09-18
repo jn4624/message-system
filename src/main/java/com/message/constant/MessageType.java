@@ -1,4 +1,4 @@
-package com.message.constants;
+package com.message.constant;
 
 public class MessageType {
 

@@ -6,29 +6,29 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import com.message.entity.MessageUserEntity;
-import com.message.repository.MessageUserRepository;
+import com.message.entity.UserEntity;
+import com.message.repository.UserRepository;
 
 @Service
 public class MessageUserDetailsService implements UserDetailsService {
 
 	private static final Logger log = LoggerFactory.getLogger(MessageUserDetailsService.class);
-	private final MessageUserRepository messageUserRepository;
+	private final UserRepository userRepository;
 
-	public MessageUserDetailsService(MessageUserRepository messageUserRepository) {
-		this.messageUserRepository = messageUserRepository;
+	public MessageUserDetailsService(UserRepository userRepository) {
+		this.userRepository = userRepository;
 	}
 
 	// Filter 내부에서 자동으로 사용될 예정
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		MessageUserEntity messageUserEntity = messageUserRepository.findByUsername(username)
+		UserEntity userEntity = userRepository.findByUsername(username)
 			.orElseThrow(() -> {
 				log.info("User not found: {}", username);
 				return new UsernameNotFoundException("");
 			});
 
 		return new MessageUserDetails(
-			messageUserEntity.getUserId(), messageUserEntity.getUsername(), messageUserEntity.getPassword());
+			userEntity.getUserId(), userEntity.getUsername(), userEntity.getPassword());
 	}
 }

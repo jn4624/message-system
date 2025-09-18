@@ -2,7 +2,7 @@ package com.message.dto.websocket.inbound;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.message.constants.MessageType;
+import com.message.constant.MessageType;
 
 public class MessageRequest extends BaseRequest {
 
