@@ -10,34 +10,29 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.message.constant.Constants;
-import com.message.dto.domain.Message;
+import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.BaseRequest;
-import com.message.dto.websocket.inbound.KeepAliveRequest;
-import com.message.dto.websocket.inbound.MessageRequest;
-import com.message.entity.MessageEntity;
-import com.message.repository.MessageRepository;
-import com.message.service.SessionService;
+import com.message.handler.websocket.RequestHandlerDispatcher;
 import com.message.session.WebSocketSessionManager;
+import com.message.util.JsonUtil;
 
 @Component
 public class MessageHandler extends TextWebSocketHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
-	private final ObjectMapper objectMapper = new ObjectMapper();
-	private final SessionService sessionService;
+	private final JsonUtil jsonUtil;
 	private final WebSocketSessionManager webSocketSessionManager;
-	private final MessageRepository messageRepository;
+	private final RequestHandlerDispatcher requestHandlerDispatcher;
 
 	public MessageHandler(
-		SessionService sessionService,
+		JsonUtil jsonUtil,
 		WebSocketSessionManager webSocketSessionManager,
-		MessageRepository messageRepository
+		RequestHandlerDispatcher requestHandlerDispatcher
 	) {
-		this.sessionService = sessionService;
+		this.jsonUtil = jsonUtil;
 		this.webSocketSessionManager = webSocketSessionManager;
-		this.messageRepository = messageRepository;
+		this.requestHandlerDispatcher = requestHandlerDispatcher;
 	}
 
 	@Override
@@ -54,18 +49,23 @@ public class MessageHandler extends TextWebSocketHandler {
 		ConcurrentWebSocketSessionDecorator concurrentWebSocketSessionDecorator =
 			new ConcurrentWebSocketSessionDecorator(session, 5000, 100 * 1024);
 
-		webSocketSessionManager.storeSession(concurrentWebSocketSessionDecorator);
+		Long id = (Long)session.getAttributes().get(Constants.USER_ID.getValue());
+		webSocketSessionManager.putSession(new UserId(id), concurrentWebSocketSessionDecorator);
 	}
 
 	@Override
 	public void handleTransportError(WebSocketSession session, Throwable exception) {
 		log.error("TransportError: [{}] from {}", exception.getMessage(), session.getId());
-		webSocketSessionManager.terminateSession(session.getId());
+
+		Long id = (Long)session.getAttributes().get(Constants.USER_ID.getValue());
+		webSocketSessionManager.closeSession(new UserId(id));
 	}
 
 	@Override
 	public void afterConnectionClosed(WebSocketSession session, @NonNull CloseStatus status) {
 		log.info("ConnectionClosed: [{}] from {}", status, session.getId());
+
+		Long id = (Long)session.getAttributes().get(Constants.USER_ID.getValue());
 
 		/*
 		  - WebSocketSession이 닫히는 경우 afterConnectionClosed가 호출된다.
@@ -74,7 +74,7 @@ public class MessageHandler extends TextWebSocketHandler {
 		    terminateSession가 중복 호출되어도 메서드 내부 sessions 맵에
 		    session이 존재하는 경우에만 close 메서드가 호출되므로 무한 루프가 발생하지 않는다.
 		 */
-		webSocketSessionManager.terminateSession(session.getId());
+		webSocketSessionManager.closeSession(new UserId(id));
 	}
 
 	@Override
@@ -82,38 +82,7 @@ public class MessageHandler extends TextWebSocketHandler {
 		String payload = message.getPayload();
 		log.info("Received TextMessage: [{}] from {}", payload, senderSession.getId());
 
-		try {
-			BaseRequest baseRequest = objectMapper.readValue(payload, BaseRequest.class);
-
-			if (baseRequest instanceof MessageRequest messageRequest) {
-				Message receivedMessage = new Message(messageRequest.getUsername(), messageRequest.getContent());
-
-				// 데이터베이스 저장
-				messageRepository.save(new MessageEntity(receivedMessage.username(), receivedMessage.content()));
-
-				webSocketSessionManager.getSessions().forEach(participantSession -> {
-					if (!senderSession.getId().equals(participantSession.getId())) {
-						sendMessage(participantSession, receivedMessage);
-					}
-				});
-			} else if (baseRequest instanceof KeepAliveRequest) {
-				sessionService.refreshTTL(
-					(String)senderSession.getAttributes().get(Constants.HTTP_SESSION_ID.getValue()));
-			}
-		} catch (Exception e) {
-			String errorMessage = "유효한 프로토콜이 아닙니다.";
-			log.error("errorMessage payload: {} from {}", payload, senderSession.getId());
-			sendMessage(senderSession, new Message("system", errorMessage));
-		}
-	}
-
-	private void sendMessage(WebSocketSession session, Message message) {
-		try {
-			String msg = objectMapper.writeValueAsString(message);
-			session.sendMessage(new TextMessage(msg));
-			log.info("send message: {} to {}", msg, session.getId());
-		} catch (Exception e) {
-			log.error("메시지 전송 실패 to {} error: {}", session.getId(), e.getMessage());
-		}
+		jsonUtil.fromJson(payload, BaseRequest.class).ifPresent(msg ->
+			requestHandlerDispatcher.dispatchRequest(senderSession, msg));
 	}
 }
