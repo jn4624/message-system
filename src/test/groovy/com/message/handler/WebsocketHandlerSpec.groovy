@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
         classes = MessageSystemApplication,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-class MessageHandlerSpec extends Specification {
+class WebsocketHandlerSpec extends Specification {
 
     /*
       - 테스트 코드에 선언하는 필드에 private 접근 제어자를 붙이지 말 것.

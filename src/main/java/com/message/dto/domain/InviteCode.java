@@ -1,7 +1,11 @@
 package com.message.dto.domain;
 
-public record InviteCode(String code) {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
+public record InviteCode(@JsonValue String code) {
+
+	@JsonCreator
 	public InviteCode {
 		if (code == null || code.isEmpty()) {
 			throw new IllegalArgumentException("Invalid inviteCode");

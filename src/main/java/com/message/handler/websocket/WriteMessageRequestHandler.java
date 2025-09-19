@@ -3,8 +3,8 @@ package com.message.handler.websocket;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.message.dto.domain.Message;
 import com.message.dto.websocket.inbound.WriteMessageRequest;
+import com.message.dto.websocket.outbound.MessageNotification;
 import com.message.entity.MessageEntity;
 import com.message.repository.MessageRepository;
 import com.message.session.WebSocketSessionManager;
@@ -23,11 +23,10 @@ public class WriteMessageRequestHandler implements BaseRequestHandler<WriteMessa
 
 	@Override
 	public void handleRequest(WebSocketSession senderSession, WriteMessageRequest request) {
-		Message receivedMessage = new Message(request.getUsername(),
-			request.getContent());
+		MessageNotification receivedMessage = new MessageNotification(request.getUsername(), request.getContent());
 
 		// 데이터베이스 저장
-		messageRepository.save(new MessageEntity(receivedMessage.username(), receivedMessage.content()));
+		messageRepository.save(new MessageEntity(receivedMessage.getUsername(), receivedMessage.getContent()));
 
 		webSocketSessionManager.getSessions().forEach(participantSession -> {
 			if (!senderSession.getId().equals(participantSession.getId())) {

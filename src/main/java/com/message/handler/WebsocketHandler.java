@@ -18,14 +18,14 @@ import com.message.session.WebSocketSessionManager;
 import com.message.util.JsonUtil;
 
 @Component
-public class MessageHandler extends TextWebSocketHandler {
+public class WebsocketHandler extends TextWebSocketHandler {
 
-	private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(WebsocketHandler.class);
 	private final JsonUtil jsonUtil;
 	private final WebSocketSessionManager webSocketSessionManager;
 	private final RequestHandlerDispatcher requestHandlerDispatcher;
 
-	public MessageHandler(
+	public WebsocketHandler(
 		JsonUtil jsonUtil,
 		WebSocketSessionManager webSocketSessionManager,
 		RequestHandlerDispatcher requestHandlerDispatcher
@@ -49,23 +49,23 @@ public class MessageHandler extends TextWebSocketHandler {
 		ConcurrentWebSocketSessionDecorator concurrentWebSocketSessionDecorator =
 			new ConcurrentWebSocketSessionDecorator(session, 5000, 100 * 1024);
 
-		Long id = (Long)session.getAttributes().get(Constants.USER_ID.getValue());
-		webSocketSessionManager.putSession(new UserId(id), concurrentWebSocketSessionDecorator);
+		UserId userId = (UserId)session.getAttributes().get(Constants.USER_ID.getValue());
+		webSocketSessionManager.putSession(userId, concurrentWebSocketSessionDecorator);
 	}
 
 	@Override
 	public void handleTransportError(WebSocketSession session, Throwable exception) {
 		log.error("TransportError: [{}] from {}", exception.getMessage(), session.getId());
 
-		Long id = (Long)session.getAttributes().get(Constants.USER_ID.getValue());
-		webSocketSessionManager.closeSession(new UserId(id));
+		UserId userId = (UserId)session.getAttributes().get(Constants.USER_ID.getValue());
+		webSocketSessionManager.closeSession(userId);
 	}
 
 	@Override
 	public void afterConnectionClosed(WebSocketSession session, @NonNull CloseStatus status) {
 		log.info("ConnectionClosed: [{}] from {}", status, session.getId());
 
-		Long id = (Long)session.getAttributes().get(Constants.USER_ID.getValue());
+		UserId userId = (UserId)session.getAttributes().get(Constants.USER_ID.getValue());
 
 		/*
 		  - WebSocketSession이 닫히는 경우 afterConnectionClosed가 호출된다.
@@ -74,7 +74,7 @@ public class MessageHandler extends TextWebSocketHandler {
 		    terminateSession가 중복 호출되어도 메서드 내부 sessions 맵에
 		    session이 존재하는 경우에만 close 메서드가 호출되므로 무한 루프가 발생하지 않는다.
 		 */
-		webSocketSessionManager.closeSession(new UserId(id));
+		webSocketSessionManager.closeSession(userId);
 	}
 
 	@Override

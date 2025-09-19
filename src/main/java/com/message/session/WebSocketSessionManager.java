@@ -12,6 +12,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import com.message.dto.domain.Message;
 import com.message.dto.domain.UserId;
+import com.message.dto.websocket.outbound.BaseMessage;
 import com.message.util.JsonUtil;
 
 @Component
@@ -52,7 +53,7 @@ public class WebSocketSessionManager {
 		}
 	}
 
-	public void sendMessage(WebSocketSession session, Message message) {
+	public void sendMessage(WebSocketSession session, BaseMessage message) {
 		jsonUtil.toJson(message).ifPresent(msg -> {
 			try {
 				session.sendMessage(new TextMessage(msg));
