@@ -1,6 +1,7 @@
 package com.message.dto
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.message.dto.websocket.inbound.AcceptRequest
 import com.message.dto.websocket.inbound.BaseRequest
 import com.message.dto.websocket.inbound.InviteRequest
 import com.message.dto.websocket.inbound.KeepAliveRequest
@@ -27,6 +28,7 @@ class RequestTypeMappingSpec extends Specification {
         where:
         payload                                                                        | expectedClass       | validate
         '{"type": "INVITE_REQUEST", "userInviteCode": "TestInviteCode123"}'            | InviteRequest       | { req -> (req as InviteRequest).userInviteCode.code() == "TestInviteCode123" }
+        '{"type": "ACCEPT_REQUEST", "username": "testuser"}'                           | AcceptRequest       | { req -> (req as AcceptRequest).username == "testuser" }
         '{"type": "WRITE_MESSAGE", "username": "testuser", "content": "test message"}' | WriteMessageRequest | { req -> (req as WriteMessageRequest).content == "test message" }
         '{"type": "KEEP_ALIVE"}'                                                       | KeepAliveRequest    | { req -> (req as KeepAliveRequest).type == "KEEP_ALIVE" }
     }

@@ -32,8 +32,8 @@ public class InviteRequestHandler implements BaseRequestHandler<InviteRequest> {
 	@Override
 	public void handleRequest(WebSocketSession senderSession, InviteRequest request) {
 		UserId inviterUserId = (UserId)senderSession.getAttributes().get(Constants.USER_ID.getValue());
-		Pair<Optional<UserId>, String> result = userConnectionService.invite(inviterUserId,
-			request.getUserInviteCode());
+		Pair<Optional<UserId>, String> result =
+			userConnectionService.invite(inviterUserId, request.getUserInviteCode());
 
 		result.getFirst().ifPresentOrElse(partnerUserId -> {
 			String inviterUsername = result.getSecond();
