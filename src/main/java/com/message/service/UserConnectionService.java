@@ -1,6 +1,8 @@
 package com.message.service;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +14,7 @@ import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.InviteCode;
 import com.message.dto.domain.User;
 import com.message.dto.domain.UserId;
+import com.message.dto.projection.UserIdUsernameProjection;
 import com.message.entity.UserConnectionEntity;
 import com.message.repository.UserConnectionRepository;
 
@@ -36,6 +39,17 @@ public class UserConnectionService {
 		this.userConnectionRepository = userConnectionRepository;
 	}
 
+	public List<User> getUsersByStatus(UserId userId, UserConnectionStatus status) {
+		List<UserIdUsernameProjection> usersA =
+			userConnectionRepository.findByPartnerAUserIdAndStatus(userId.id(), status);
+		List<UserIdUsernameProjection> usersB =
+			userConnectionRepository.findByPartnerBUserIdAndStatus(userId.id(), status);
+
+		return Stream.concat(usersA.stream(), usersB.stream())
+			.map(item ->
+				new User(new UserId(item.getUserId()), item.getUsername())).toList();
+	}
+
 	public Pair<Optional<UserId>, String> invite(UserId inviterUserId, InviteCode inviteCode) {
 		Optional<User> partner = userService.getUser(inviteCode); // 연결할 대상
 		if (partner.isEmpty()) {
@@ -52,6 +66,11 @@ public class UserConnectionService {
 		UserConnectionStatus userConnectionStatus = getStatus(inviterUserId, partnerUserId);
 		return switch (userConnectionStatus) {
 			case NONE, DISCONNECTED -> {
+				if (userService.getConnectionCount(inviterUserId)
+					.filter(count -> count >= userConnectionLimitService.getLimitConnections()).isPresent()) {
+					yield Pair.of(Optional.empty(), "Connection limit reached");
+				}
+
 				Optional<String> inviterUsername = userService.getUsername(inviterUserId);
 				if (inviterUsername.isEmpty()) {
 					log.warn("InviteRequest failed");
@@ -115,6 +134,23 @@ public class UserConnectionService {
 		}
 	}
 
+	public Pair<Boolean, String> reject(UserId senderUserId, String inviterUsername) {
+		return userService.getUserId(inviterUsername)
+			.filter(inviterUserId -> !inviterUserId.equals(senderUserId))
+			.filter(inviterUserId -> getInviterUserId(inviterUserId, senderUserId)
+				.filter(invitationSenderUserId -> invitationSenderUserId.equals(inviterUserId)).isPresent())
+			.filter(inviterUserId -> getStatus(inviterUserId, senderUserId) == UserConnectionStatus.PENDING)
+			.map(inviterUserId -> {
+				try {
+					setStatus(inviterUserId, senderUserId, UserConnectionStatus.REJECTED);
+					return Pair.of(true, inviterUsername);
+				} catch (Exception e) {
+					log.error("Set rejected failed. cause: {}", e.getMessage());
+					return Pair.of(false, "Reject failed");
+				}
+			}).orElse(Pair.of(false, "Reject failed"));
+	}
+
 	private Optional<UserId> getInviterUserId(UserId parterAUserId, UserId parterBUserId) {
 		return userConnectionRepository.findInviterUserIdByPartnerAUserIdAndPartnerBUserId(
 				Long.min(parterAUserId.id(), parterBUserId.id()),
@@ -123,7 +159,7 @@ public class UserConnectionService {
 	}
 
 	private UserConnectionStatus getStatus(UserId inviterUserId, UserId partnerUserId) {
-		return userConnectionRepository.findByPartnerAUserIdAndPartnerBUserId(
+		return userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(
 				Long.min(inviterUserId.id(), partnerUserId.id()),
 				Long.max(inviterUserId.id(), partnerUserId.id()))
 			.map(status -> UserConnectionStatus.valueOf(status.getStatus()))

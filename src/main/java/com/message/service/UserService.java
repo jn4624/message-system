@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.message.dto.domain.InviteCode;
 import com.message.dto.domain.User;
 import com.message.dto.domain.UserId;
+import com.message.dto.projection.CountProjection;
 import com.message.dto.projection.UsernameProjection;
 import com.message.entity.UserEntity;
 import com.message.repository.UserRepository;
@@ -49,6 +50,11 @@ public class UserService {
 	public Optional<InviteCode> getInviteCode(UserId userId) {
 		return userRepository.findInviteCodeByUserId(userId.id())
 			.map(inviteCode -> new InviteCode(inviteCode.getConnectionInviteCode()));
+	}
+
+	public Optional<Integer> getConnectionCount(UserId userId) {
+		return userRepository.findCountByUserId(userId.id())
+			.map(CountProjection::getConnectionCount);
 	}
 
 	@Transactional

@@ -8,6 +8,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import com.message.dto.domain.InviteCode;
+import com.message.dto.projection.CountProjection;
 import com.message.dto.projection.InviteCodeProjection;
 import com.message.dto.projection.UsernameProjection;
 import com.message.entity.UserEntity;
@@ -24,6 +25,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 	Optional<UserEntity> findByConnectionInviteCode(@NonNull String connectionInviteCode);
 
 	Optional<InviteCodeProjection> findInviteCodeByUserId(@NonNull Long userId);
+
+	Optional<CountProjection> findCountByUserId(@NonNull Long userId);
 
 	/*
 	  - 비관적 락 사용
