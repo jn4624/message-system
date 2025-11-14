@@ -21,7 +21,7 @@ public class UserConnectionLimitService {
 	private final UserConnectionRepository userConnectionRepository;
 
 	/*
-	  - 상수로 정의하지 않는 이유는 테스트를 편하기 하기 위해서
+	  - 상수로 정의하지 않는 이유는 테스트를 편하게 하기 위해서
 	  - final로 정의할 경우 테스트에서 변경이 어렵다.
 	 */
 	private int limitConnections = 1_000;
@@ -72,5 +72,35 @@ public class UserConnectionLimitService {
 		secondUserEntity.setConnectionCount(secondUserConnectionCount + 1);
 
 		userConnectionEntity.setStatus(UserConnectionStatus.ACCEPTED);
+	}
+
+	@Transactional
+	public void disconnect(UserId senderUserId, UserId partnerUserId) {
+		Long firstUserId = Long.min(senderUserId.id(), partnerUserId.id());
+		Long secondUserId = Long.max(senderUserId.id(), partnerUserId.id());
+
+		UserEntity firstUserEntity = userRepository.findForUpdateByUserId(firstUserId)
+			.orElseThrow(() -> new EntityNotFoundException("Invalid userId: " + firstUserId));
+		UserEntity secondUserEntity = userRepository.findForUpdateByUserId(secondUserId)
+			.orElseThrow(() -> new EntityNotFoundException("Invalid userId: " + secondUserId));
+
+		UserConnectionEntity userConnectionEntity =
+			userConnectionRepository.findByPartnerAUserIdAndPartnerBUserIdAndStatus(
+					firstUserId, secondUserId, UserConnectionStatus.ACCEPTED)
+				.orElseThrow(() -> new EntityNotFoundException("Invalid status"));
+
+		int firstUserConnectionCount = firstUserEntity.getConnectionCount();
+		if (firstUserConnectionCount <= 0) {
+			throw new IllegalStateException("Count is already zero. userId: " + firstUserId);
+		}
+		int secondUserConnectionCount = secondUserEntity.getConnectionCount();
+		if (secondUserConnectionCount <= 0) {
+			throw new IllegalStateException("Count is already zero. userId: " + secondUserId);
+		}
+
+		firstUserEntity.setConnectionCount(firstUserConnectionCount - 1);
+		secondUserEntity.setConnectionCount(secondUserConnectionCount - 1);
+
+		userConnectionEntity.setStatus(UserConnectionStatus.DISCONNECTED);
 	}
 }

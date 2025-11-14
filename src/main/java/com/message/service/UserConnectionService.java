@@ -151,6 +151,29 @@ public class UserConnectionService {
 			}).orElse(Pair.of(false, "Reject failed"));
 	}
 
+	public Pair<Boolean, String> disconnect(UserId senderUserId, String partnerUsername) {
+		return userService.getUserId(partnerUsername)
+			.filter(partnerUserId -> !senderUserId.equals(partnerUserId))
+			.map(partnerUserId -> {
+				try {
+					UserConnectionStatus userConnectionStatus = getStatus(senderUserId, partnerUserId);
+					if (userConnectionStatus == UserConnectionStatus.ACCEPTED) {
+						userConnectionLimitService.disconnect(senderUserId, partnerUserId);
+						return Pair.of(true, partnerUsername);
+					} else if (userConnectionStatus == UserConnectionStatus.REJECTED
+						&& getInviterUserId(senderUserId, partnerUserId)
+						.filter(inviterUserId -> inviterUserId.equals(partnerUserId)).isPresent()) {
+						setStatus(senderUserId, partnerUserId, UserConnectionStatus.DISCONNECTED);
+						return Pair.of(true, partnerUsername);
+					}
+				} catch (Exception e) {
+					log.error("Disconnect failed. cause: {}", e.getMessage());
+				}
+
+				return Pair.of(false, "Disconnect failed");
+			}).orElse(Pair.of(false, "Disconnect failed"));
+	}
+
 	private Optional<UserId> getInviterUserId(UserId parterAUserId, UserId parterBUserId) {
 		return userConnectionRepository.findInviterUserIdByPartnerAUserIdAndPartnerBUserId(
 				Long.min(parterAUserId.id(), parterBUserId.id()),

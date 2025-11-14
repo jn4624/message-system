@@ -108,7 +108,6 @@ class UserConnectionServiceSpec extends Specification {
         given:
         userService.getUserId(targetUsername) >> Optional.of(tergetUserId)
         userService.getUsername(senderUserId) >> Optional.of(senderUsername)
-
         userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(_ as Long, _ as Long) >> {
             Optional.of(Stub(UserConnectionStatusProjection) {
                 getStatus() >> beforeConnectionStatus.name()
@@ -136,5 +135,51 @@ class UserConnectionServiceSpec extends Specification {
         'Reject wrong invite'   | new UserId(1) | 'userA'        | new UserId(4) | 'userD'        | Optional.of(new UserId(2)) | UserConnectionStatus.PENDING      | Pair.of(false, 'Reject failed')
         'Reject invalid invite' | new UserId(1) | 'userA'        | new UserId(4) | 'userD'        | Optional.empty()           | UserConnectionStatus.NONE         | Pair.of(false, 'Reject failed')
         'After disconnected'    | new UserId(1) | 'userA'        | new UserId(2) | 'userB'        | Optional.of(new UserId(2)) | UserConnectionStatus.DISCONNECTED | Pair.of(false, 'Reject failed')
+    }
+
+    def "사용자 연결 신청 삭제에 대한 테스트."() {
+        given:
+        userService.getUserId(targetUsername) >> Optional.of(tergetUserId)
+        userService.getUsername(senderUserId) >> Optional.of(senderUsername)
+        userRepository.findForUpdateByUserId(_ as Long) >> { Long userId ->
+            def entity = new UserEntity()
+            if (userId != 8) {
+                entity.setConnectionCount(100)
+            }
+            return Optional.of(entity)
+        }
+        userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(_ as Long, _ as Long) >> {
+            Optional.of(Stub(UserConnectionStatusProjection) {
+                getStatus() >> beforeConnectionStatus.name()
+            })
+        }
+        userConnectionRepository.findInviterUserIdByPartnerAUserIdAndPartnerBUserId(_ as Long, _ as Long) >> {
+            inviterUserId.flatMap { UserId inviter ->
+                Optional.of(Stub(InviterUserIdProjection) {
+                    getInviterUserId() >> inviter.id()
+                })
+            }
+        }
+        userConnectionRepository.findByPartnerAUserIdAndPartnerBUserIdAndStatus(_ as Long, _ as Long, _ as UserConnectionStatus) >> {
+            inviterUserId.flatMap { UserId inviter ->
+                Optional.of(new UserConnectionEntity(senderUserId.id(), tergetUserId.id(), UserConnectionStatus.ACCEPTED, inviter.id()))
+            }
+        }
+
+        when:
+        def result = userConnectionService.disconnect(senderUserId, targetUsername)
+
+        then:
+        result == expectedResult
+
+        where:
+        scenario                | senderUserId  | senderUsername | tergetUserId  | targetUsername | inviterUserId              | beforeConnectionStatus            | expectedResult
+        'Disconnect connection' | new UserId(1) | 'userA'        | new UserId(2) | 'userB'        | Optional.of(new UserId(2)) | UserConnectionStatus.ACCEPTED     | Pair.of(true, 'userB')
+        'Reject status'         | new UserId(1) | 'userA'        | new UserId(2) | 'userB'        | Optional.of(new UserId(2)) | UserConnectionStatus.REJECTED     | Pair.of(true, 'userB')
+        'Pending status'        | new UserId(1) | 'userA'        | new UserId(2) | 'userB'        | Optional.of(new UserId(2)) | UserConnectionStatus.PENDING      | Pair.of(false, 'Disconnect failed')
+        'Already disconnected'  | new UserId(1) | 'userA'        | new UserId(2) | 'userB'        | Optional.of(new UserId(2)) | UserConnectionStatus.DISCONNECTED | Pair.of(false, 'Disconnect failed')
+        'Self disconnected'     | new UserId(1) | 'userA'        | new UserId(1) | 'userA'        | Optional.of(new UserId(1)) | UserConnectionStatus.ACCEPTED     | Pair.of(false, 'Disconnect failed')
+        'Disconnect wrong user' | new UserId(1) | 'userA'        | new UserId(1) | 'userA'        | Optional.empty()           | UserConnectionStatus.NONE         | Pair.of(false, 'Disconnect failed')
+        'Wrong condition'       | new UserId(8) | 'userH'        | new UserId(9) | 'userI'        | Optional.of(new UserId(9)) | UserConnectionStatus.ACCEPTED     | Pair.of(false, 'Disconnect failed')
     }
 }
