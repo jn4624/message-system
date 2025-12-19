@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.message.constant.UserConnectionStatus;
 import com.message.dto.projection.InviterUserIdProjection;
 import com.message.dto.projection.UserConnectionStatusProjection;
-import com.message.dto.projection.UserIdUsernameProjection;
+import com.message.dto.projection.UserIdUsernameInviterUserIdProjection;
 import com.message.entity.UserConnectionEntity;
 import com.message.entity.UserConnectionId;
 
@@ -30,18 +30,18 @@ public interface UserConnectionRepository extends JpaRepository<UserConnectionEn
 		@NonNull Long partnerAUserId, @NonNull Long partnerBUserId);
 
 	@Query(
-		"SELECT u.partnerBUserId AS userId, userB.username AS username "
+		"SELECT u.partnerBUserId AS userId, userB.username AS username, u.inviterUserId AS inviterUserId "
 			+ "FROM UserConnectionEntity u "
 			+ "INNER JOIN UserEntity userB ON u.partnerBUserId = userB.userId "
 			+ "WHERE u.partnerAUserId = :userId AND u.status = :status")
-	List<UserIdUsernameProjection> findByPartnerAUserIdAndStatus(@NonNull @Param("userId") Long userId,
+	List<UserIdUsernameInviterUserIdProjection> findByPartnerAUserIdAndStatus(@NonNull @Param("userId") Long userId,
 		@NonNull @Param("status") UserConnectionStatus status);
 
 	@Query(
-		"SELECT u.partnerAUserId AS userId, userA.username AS username "
+		"SELECT u.partnerAUserId AS userId, userA.username AS username, u.inviterUserId AS inviterUserId "
 			+ "FROM UserConnectionEntity u "
 			+ "INNER JOIN UserEntity userA ON u.partnerAUserId = userA.userId "
 			+ "WHERE u.partnerBUserId = :userId AND u.status = :status")
-	List<UserIdUsernameProjection> findByPartnerBUserIdAndStatus(@NonNull @Param("userId") Long userId,
+	List<UserIdUsernameInviterUserIdProjection> findByPartnerBUserIdAndStatus(@NonNull @Param("userId") Long userId,
 		@NonNull @Param("status") UserConnectionStatus status);
 }

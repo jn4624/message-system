@@ -14,7 +14,7 @@ import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.InviteCode;
 import com.message.dto.domain.User;
 import com.message.dto.domain.UserId;
-import com.message.dto.projection.UserIdUsernameProjection;
+import com.message.dto.projection.UserIdUsernameInviterUserIdProjection;
 import com.message.entity.UserConnectionEntity;
 import com.message.repository.UserConnectionRepository;
 
@@ -40,14 +40,21 @@ public class UserConnectionService {
 	}
 
 	public List<User> getUsersByStatus(UserId userId, UserConnectionStatus status) {
-		List<UserIdUsernameProjection> usersA =
+		List<UserIdUsernameInviterUserIdProjection> usersA =
 			userConnectionRepository.findByPartnerAUserIdAndStatus(userId.id(), status);
-		List<UserIdUsernameProjection> usersB =
+		List<UserIdUsernameInviterUserIdProjection> usersB =
 			userConnectionRepository.findByPartnerBUserIdAndStatus(userId.id(), status);
 
-		return Stream.concat(usersA.stream(), usersB.stream())
-			.map(item ->
-				new User(new UserId(item.getUserId()), item.getUsername())).toList();
+		if (status == UserConnectionStatus.ACCEPTED) {
+			return Stream.concat(usersA.stream(), usersB.stream())
+				.map(item ->
+					new User(new UserId(item.getUserId()), item.getUsername())).toList();
+		} else {
+			return Stream.concat(usersA.stream(), usersB.stream())
+				.filter(item -> !item.getInviterUserId().equals(userId.id()))
+				.map(item ->
+					new User(new UserId(item.getUserId()), item.getUsername())).toList();
+		}
 	}
 
 	public Pair<Optional<UserId>, String> invite(UserId inviterUserId, InviteCode inviteCode) {
