@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.message.dto.domain.Message;
 import com.message.dto.domain.UserId;
 import com.message.dto.websocket.outbound.BaseMessage;
 import com.message.util.JsonUtil;

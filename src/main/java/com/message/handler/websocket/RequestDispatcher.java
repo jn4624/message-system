@@ -17,9 +17,9 @@ import jakarta.annotation.PostConstruct;
 
 @Component
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class RequestHandlerDispatcher {
+public class RequestDispatcher {
 
-	private static final Logger log = LoggerFactory.getLogger(RequestHandlerDispatcher.class);
+	private static final Logger log = LoggerFactory.getLogger(RequestDispatcher.class);
 
 	/*
 	  - 멀티스레드에서 다양하게 접근핥 예정이지만, ConcurrentHashMap을 사용하지 않고 HashMap을 사용하는 이유
@@ -30,7 +30,7 @@ public class RequestHandlerDispatcher {
 	private final Map<Class<? extends BaseRequest>, BaseRequestHandler<? extends BaseRequest>> handlerMap = new HashMap<>();
 	private final ListableBeanFactory listableBeanFactory;
 
-	public RequestHandlerDispatcher(ListableBeanFactory listableBeanFactory) {
+	public RequestDispatcher(ListableBeanFactory listableBeanFactory) {
 		this.listableBeanFactory = listableBeanFactory;
 	}
 

@@ -13,7 +13,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.message.constant.Constants;
 import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.BaseRequest;
-import com.message.handler.websocket.RequestHandlerDispatcher;
+import com.message.handler.websocket.RequestDispatcher;
 import com.message.session.WebSocketSessionManager;
 import com.message.util.JsonUtil;
 
@@ -23,16 +23,16 @@ public class WebsocketHandler extends TextWebSocketHandler {
 	private static final Logger log = LoggerFactory.getLogger(WebsocketHandler.class);
 	private final JsonUtil jsonUtil;
 	private final WebSocketSessionManager webSocketSessionManager;
-	private final RequestHandlerDispatcher requestHandlerDispatcher;
+	private final RequestDispatcher requestDispatcher;
 
 	public WebsocketHandler(
 		JsonUtil jsonUtil,
 		WebSocketSessionManager webSocketSessionManager,
-		RequestHandlerDispatcher requestHandlerDispatcher
+		RequestDispatcher requestDispatcher
 	) {
 		this.jsonUtil = jsonUtil;
 		this.webSocketSessionManager = webSocketSessionManager;
-		this.requestHandlerDispatcher = requestHandlerDispatcher;
+		this.requestDispatcher = requestDispatcher;
 	}
 
 	@Override
@@ -83,6 +83,6 @@ public class WebsocketHandler extends TextWebSocketHandler {
 		log.info("Received TextMessage: [{}] from {}", payload, senderSession.getId());
 
 		jsonUtil.fromJson(payload, BaseRequest.class).ifPresent(msg ->
-			requestHandlerDispatcher.dispatchRequest(senderSession, msg));
+			requestDispatcher.dispatchRequest(senderSession, msg));
 	}
 }
