@@ -18,8 +18,6 @@ import com.message.dto.projection.UserIdUsernameInviterUserIdProjection;
 import com.message.entity.UserConnectionEntity;
 import com.message.repository.UserConnectionRepository;
 
-import jakarta.persistence.EntityNotFoundException;
-
 @Service
 public class UserConnectionService {
 
@@ -133,11 +131,11 @@ public class UserConnectionService {
 		try {
 			userConnectionLimitService.accept(accepterUserId, inviterUserId);
 			return Pair.of(Optional.of(inviterUserId), acceptUsername.get());
-		} catch (EntityNotFoundException e) {
-			log.error("Accept failed. cause: {}", e.getMessage());
-			return Pair.of(Optional.empty(), "Accept failed");
 		} catch (IllegalStateException e) {
 			return Pair.of(Optional.empty(), e.getMessage());
+		} catch (Exception e) {
+			log.error("Accept failed. cause: {}", e.getMessage());
+			return Pair.of(Optional.empty(), "Accept failed");
 		}
 	}
 
