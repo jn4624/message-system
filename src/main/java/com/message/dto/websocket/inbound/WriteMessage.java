@@ -4,13 +4,13 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.message.constant.MessageType;
 
-public class WriteMessageRequest extends BaseRequest {
+public class WriteMessage extends BaseRequest {
 
 	private final String username;
 	private final String content;
 
 	@JsonCreator
-	public WriteMessageRequest(
+	public WriteMessage(
 		@JsonProperty("username") String username,
 		@JsonProperty("content") String content
 	) {

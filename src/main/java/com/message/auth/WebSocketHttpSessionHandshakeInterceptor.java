@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
 
-import com.message.constant.Constants;
+import com.message.constant.IdKey;
 import com.message.dto.domain.UserId;
 
 import jakarta.servlet.http.HttpSession;
@@ -48,8 +48,8 @@ public class WebSocketHttpSessionHandshakeInterceptor extends HttpSessionHandsha
 			}
 
 			MessageUserDetails messageUserDetails = (MessageUserDetails)authentication.getPrincipal();
-			attributes.put(Constants.HTTP_SESSION_ID.getValue(), httpSession.getId());
-			attributes.put(Constants.USER_ID.getValue(), new UserId(messageUserDetails.getUserId()));
+			attributes.put(IdKey.HTTP_SESSION_ID.getValue(), httpSession.getId());
+			attributes.put(IdKey.USER_ID.getValue(), new UserId(messageUserDetails.getUserId()));
 			return true;
 		} else {
 			log.info("WebSocket Handshake failed. request is: {}", request.getClass());

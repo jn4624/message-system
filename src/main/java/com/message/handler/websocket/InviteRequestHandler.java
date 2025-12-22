@@ -6,7 +6,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.message.constant.Constants;
+import com.message.constant.IdKey;
 import com.message.constant.MessageType;
 import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.UserId;
@@ -31,7 +31,7 @@ public class InviteRequestHandler implements BaseRequestHandler<InviteRequest> {
 
 	@Override
 	public void handleRequest(WebSocketSession senderSession, InviteRequest request) {
-		UserId inviterUserId = (UserId)senderSession.getAttributes().get(Constants.USER_ID.getValue());
+		UserId inviterUserId = (UserId)senderSession.getAttributes().get(IdKey.USER_ID.getValue());
 		Pair<Optional<UserId>, String> result =
 			userConnectionService.invite(inviterUserId, request.getUserInviteCode());
 

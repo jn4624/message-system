@@ -3,7 +3,7 @@ package com.message.handler.websocket;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.message.constant.Constants;
+import com.message.constant.IdKey;
 import com.message.constant.MessageType;
 import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.FetchUserInviteCodeRequest;
@@ -26,7 +26,7 @@ public class FetchUserInviteCodeRequestHandler implements BaseRequestHandler<Fet
 
 	@Override
 	public void handleRequest(WebSocketSession senderSession, FetchUserInviteCodeRequest request) {
-		UserId senderUserId = (UserId)senderSession.getAttributes().get(Constants.USER_ID.getValue());
+		UserId senderUserId = (UserId)senderSession.getAttributes().get(IdKey.USER_ID.getValue());
 		userService.getInviteCode(senderUserId)
 			.ifPresentOrElse(inviteCode -> webSocketSessionManager.sendMessage(senderSession,
 					new FetchUserInviteCodeResponse(inviteCode)),

@@ -1,20 +1,37 @@
 package com.message.service;
 
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.session.Session;
 import org.springframework.session.SessionRepository;
 import org.springframework.stereotype.Service;
 
+import com.message.constant.IdKey;
+import com.message.dto.domain.ChannelId;
+import com.message.dto.domain.UserId;
+
 @Service
 public class SessionService {
 
-	private final SessionRepository<? extends Session> httpSessionRepository;
+	private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
-	public SessionService(SessionRepository<? extends Session> httpSessionRepository) {
+	private final SessionRepository<? extends Session> httpSessionRepository;
+	private final StringRedisTemplate stringRedisTemplate;
+	private final String NAMESPACE = "message:user";
+	private final long TTL = 300;
+
+	public SessionService(
+		SessionRepository<? extends Session> httpSessionRepository,
+		StringRedisTemplate stringRedisTemplate
+	) {
 		this.httpSessionRepository = httpSessionRepository;
+		this.stringRedisTemplate = stringRedisTemplate;
 	}
 
 	public String getUsername() {
@@ -22,17 +39,40 @@ public class SessionService {
 		return authentication.getName();
 	}
 
-	public void refreshTTL(String httpSessionId) {
-		Session httpSession = httpSessionRepository.findById(httpSessionId);
+	public boolean setActiveChannel(UserId userId, ChannelId channelId) {
+		String channelIdKey = buildChannelIdKey(userId);
 
-		if (httpSession != null) {
+		try {
+			stringRedisTemplate.opsForValue().set(channelIdKey, channelId.id().toString(), TTL, TimeUnit.SECONDS);
+			return true;
+		} catch (Exception e) {
+			log.error("Redis set failed. key: {}, channelId: {}", channelIdKey, channelId);
+			return false;
+		}
+	}
+
+	public void refreshTTL(UserId userId, String httpSessionId) {
+		String channelIdKey = buildChannelIdKey(userId);
+
+		try {
+			Session httpSession = httpSessionRepository.findById(httpSessionId);
+
+			if (httpSession != null) {
 			/*
 			  - 세션의 마지막 접근 시간을 현재 시간으로 갱신하여 TTL 연장
 			  - 아래 설정으로는 저장이 되지 않는다.
 			    제네릭 제약사항은 읽기 전용이라 httpSessionRepository의 save를 호출할 수 없다.
 			  - 따라서 RedisSessionConfig의 설정을 변경하는 방법으로 진행한다.
 			 */
-			httpSession.setLastAccessedTime(Instant.now());
+				httpSession.setLastAccessedTime(Instant.now());
+				stringRedisTemplate.expire(channelIdKey, TTL, TimeUnit.SECONDS);
+			}
+		} catch (Exception e) {
+			log.error("Redis expire failed. key: {}", channelIdKey);
 		}
+	}
+
+	private String buildChannelIdKey(UserId userId) {
+		return "%s:%d:%s".formatted(NAMESPACE, userId.id(), IdKey.CHANNEL_ID);
 	}
 }

@@ -55,6 +55,14 @@ public class UserConnectionService {
 		}
 	}
 
+	public UserConnectionStatus getStatus(UserId inviterUserId, UserId partnerUserId) {
+		return userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(
+				Long.min(inviterUserId.id(), partnerUserId.id()),
+				Long.max(inviterUserId.id(), partnerUserId.id()))
+			.map(status -> UserConnectionStatus.valueOf(status.getStatus()))
+			.orElse(UserConnectionStatus.NONE);
+	}
+
 	public Pair<Optional<UserId>, String> invite(UserId inviterUserId, InviteCode inviteCode) {
 		Optional<User> partner = userService.getUser(inviteCode); // 연결할 대상
 		if (partner.isEmpty()) {
@@ -184,14 +192,6 @@ public class UserConnectionService {
 				Long.min(parterAUserId.id(), parterBUserId.id()),
 				Long.max(parterAUserId.id(), parterBUserId.id()))
 			.map(inviterUserIdProjection -> new UserId(inviterUserIdProjection.getInviterUserId()));
-	}
-
-	private UserConnectionStatus getStatus(UserId inviterUserId, UserId partnerUserId) {
-		return userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(
-				Long.min(inviterUserId.id(), partnerUserId.id()),
-				Long.max(inviterUserId.id(), partnerUserId.id()))
-			.map(status -> UserConnectionStatus.valueOf(status.getStatus()))
-			.orElse(UserConnectionStatus.NONE);
 	}
 
 	@Transactional

@@ -6,7 +6,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.message.constant.Constants;
+import com.message.constant.IdKey;
 import com.message.constant.MessageType;
 import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.AcceptRequest;
@@ -30,7 +30,7 @@ public class AcceptRequestHandler implements BaseRequestHandler<AcceptRequest> {
 
 	@Override
 	public void handleRequest(WebSocketSession senderSession, AcceptRequest request) {
-		UserId accepterUserId = (UserId)senderSession.getAttributes().get(Constants.USER_ID.getValue());
+		UserId accepterUserId = (UserId)senderSession.getAttributes().get(IdKey.USER_ID.getValue());
 
 		Pair<Optional<UserId>, String> result =
 			userConnectionService.accept(accepterUserId, request.getUsername());

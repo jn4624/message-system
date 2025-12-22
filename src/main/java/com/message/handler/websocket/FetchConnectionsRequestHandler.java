@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.message.constant.Constants;
+import com.message.constant.IdKey;
 import com.message.dto.domain.Connection;
 import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.FetchConnectionsRequest;
@@ -27,7 +27,7 @@ public class FetchConnectionsRequestHandler implements BaseRequestHandler<FetchC
 
 	@Override
 	public void handleRequest(WebSocketSession senderSession, FetchConnectionsRequest request) {
-		UserId senderUserId = (UserId)senderSession.getAttributes().get(Constants.USER_ID.getValue());
+		UserId senderUserId = (UserId)senderSession.getAttributes().get(IdKey.USER_ID.getValue());
 		List<Connection> connections = userConnectionService.getUsersByStatus(senderUserId, request.getStatus())
 			.stream().map(user -> new Connection(user.username(), request.getStatus())).toList();
 

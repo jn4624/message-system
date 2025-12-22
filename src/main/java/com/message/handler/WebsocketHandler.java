@@ -10,7 +10,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import com.message.constant.Constants;
+import com.message.constant.IdKey;
 import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.BaseRequest;
 import com.message.handler.websocket.RequestDispatcher;
@@ -49,7 +49,7 @@ public class WebsocketHandler extends TextWebSocketHandler {
 		ConcurrentWebSocketSessionDecorator concurrentWebSocketSessionDecorator =
 			new ConcurrentWebSocketSessionDecorator(session, 5000, 100 * 1024);
 
-		UserId userId = (UserId)session.getAttributes().get(Constants.USER_ID.getValue());
+		UserId userId = (UserId)session.getAttributes().get(IdKey.USER_ID.getValue());
 		webSocketSessionManager.putSession(userId, concurrentWebSocketSessionDecorator);
 	}
 
@@ -57,7 +57,7 @@ public class WebsocketHandler extends TextWebSocketHandler {
 	public void handleTransportError(WebSocketSession session, Throwable exception) {
 		log.error("TransportError: [{}] from {}", exception.getMessage(), session.getId());
 
-		UserId userId = (UserId)session.getAttributes().get(Constants.USER_ID.getValue());
+		UserId userId = (UserId)session.getAttributes().get(IdKey.USER_ID.getValue());
 		webSocketSessionManager.closeSession(userId);
 	}
 
@@ -65,7 +65,7 @@ public class WebsocketHandler extends TextWebSocketHandler {
 	public void afterConnectionClosed(WebSocketSession session, @NonNull CloseStatus status) {
 		log.info("ConnectionClosed: [{}] from {}", status, session.getId());
 
-		UserId userId = (UserId)session.getAttributes().get(Constants.USER_ID.getValue());
+		UserId userId = (UserId)session.getAttributes().get(IdKey.USER_ID.getValue());
 
 		/*
 		  - WebSocketSession이 닫히는 경우 afterConnectionClosed가 호출된다.
