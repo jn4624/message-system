@@ -1,6 +1,7 @@
 package com.message.entity;
 
 import java.util.Objects;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,6 +34,7 @@ public class ChannelEntity extends BaseEntity {
 	public ChannelEntity(String title, int headCount) {
 		this.title = title;
 		this.headCount = headCount;
+		this.channelInviteCode = UUID.randomUUID().toString().replace("-", "");
 	}
 
 	public Long getChannelId() {

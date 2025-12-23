@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.message.constant.ResultType;
+import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.Channel;
 import com.message.dto.domain.ChannelId;
 import com.message.dto.domain.UserId;
@@ -25,15 +26,18 @@ public class ChannelService {
 	private static final Logger log = LoggerFactory.getLogger(ChannelService.class);
 
 	private final SessionService sessionService;
+	private final UserConnectionService userConnectionService;
 	private final ChannelRepository channelRepository;
 	private final UserChannelRepository userChannelRepository;
 
 	public ChannelService(
 		SessionService sessionService,
+		UserConnectionService userConnectionService,
 		ChannelRepository channelRepository,
 		UserChannelRepository userChannelRepository
 	) {
 		this.sessionService = sessionService;
+		this.userConnectionService = userConnectionService;
 		this.channelRepository = channelRepository;
 		this.userChannelRepository = userChannelRepository;
 	}
@@ -58,6 +62,11 @@ public class ChannelService {
 		if (title == null || title.isEmpty()) {
 			log.warn("Invalid args : title is empty");
 			return Pair.of(Optional.empty(), ResultType.INVALID_ARGS);
+		}
+
+		if (userConnectionService.getStatus(senderUserId, participantId) != UserConnectionStatus.ACCEPTED) {
+			log.warn("Included unconnected user. participantId: {}", participantId);
+			return Pair.of(Optional.empty(), ResultType.NOT_ALLOWED);
 		}
 
 		try {
