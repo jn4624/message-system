@@ -23,7 +23,6 @@ public class SessionService {
 
 	private final SessionRepository<? extends Session> httpSessionRepository;
 	private final StringRedisTemplate stringRedisTemplate;
-	private final String NAMESPACE = "message:user";
 	private final long TTL = 300;
 
 	public SessionService(
@@ -37,6 +36,20 @@ public class SessionService {
 	public String getUsername() {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		return authentication.getName();
+	}
+
+	public boolean isOnline(UserId userId, ChannelId channelId) {
+		String channelIdKey = buildChannelIdKey(userId);
+
+		try {
+			String chId = stringRedisTemplate.opsForValue().get(channelIdKey);
+			if (chId != null && chId.equals(channelId.id().toString())) {
+				return true;
+			}
+		} catch (Exception e) {
+			log.error("Redis get failed. key: {}, cause: {}", channelIdKey, e.getMessage());
+		}
+		return false;
 	}
 
 	public boolean setActiveChannel(UserId userId, ChannelId channelId) {
@@ -73,6 +86,7 @@ public class SessionService {
 	}
 
 	private String buildChannelIdKey(UserId userId) {
+		String NAMESPACE = "message:user";
 		return "%s:%d:%s".formatted(NAMESPACE, userId.id(), IdKey.CHANNEL_ID);
 	}
 }
