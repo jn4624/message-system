@@ -68,9 +68,9 @@ class WebsocketHandlerSpec extends Specification {
 
         when:
         clientA.session.sendMessage(new TextMessage(
-                objectMapper.writeValueAsString(new WriteMessage(new ChannelId(1), "testuserA", "안녕하세요. A 입니다."))))
+                objectMapper.writeValueAsString(new WriteMessage(new ChannelId(1), "안녕하세요. A 입니다."))))
         clientB.session.sendMessage(new TextMessage(
-                objectMapper.writeValueAsString(new WriteMessage(new ChannelId(1), "testuserB", "안녕하세요. B 입니다."))))
+                objectMapper.writeValueAsString(new WriteMessage(new ChannelId(1), "안녕하세요. B 입니다."))))
 
         then:
         def resultA = clientA.queue.poll(1, TimeUnit.SECONDS)
