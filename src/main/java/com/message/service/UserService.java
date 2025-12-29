@@ -1,5 +1,6 @@
 package com.message.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -40,6 +41,13 @@ public class UserService {
 
 	public Optional<UserId> getUserId(String username) {
 		return userRepository.findByUsername(username).map(userEntity -> new UserId(userEntity.getUserId()));
+	}
+
+	public List<UserId> getUserIds(List<String> usernames) {
+		return userRepository.findByUsernameIn(usernames)
+			.stream()
+			.map(projection -> new UserId(projection.getUserId()))
+			.toList();
 	}
 
 	public Optional<User> getUser(InviteCode inviteCode) {

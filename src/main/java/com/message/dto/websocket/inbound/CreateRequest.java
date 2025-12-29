@@ -1,5 +1,7 @@
 package com.message.dto.websocket.inbound;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.message.constant.MessageType;
@@ -7,23 +9,23 @@ import com.message.constant.MessageType;
 public class CreateRequest extends BaseRequest {
 
 	private final String title;
-	private final String participantUsername;
+	private final List<String> participantUsernames;
 
 	@JsonCreator
 	public CreateRequest(
 		@JsonProperty("title") String title,
-		@JsonProperty("participantUsername") String participantUsername
+		@JsonProperty("participantUsername") List<String> participantUsernames
 	) {
 		super(MessageType.CREATE_REQUEST);
 		this.title = title;
-		this.participantUsername = participantUsername;
+		this.participantUsernames = participantUsernames;
 	}
 
 	public String getTitle() {
 		return title;
 	}
 
-	public String getParticipantUsername() {
-		return participantUsername;
+	public List<String> getParticipantUsernames() {
+		return participantUsernames;
 	}
 }

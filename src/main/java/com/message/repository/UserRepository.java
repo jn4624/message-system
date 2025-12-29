@@ -1,5 +1,7 @@
 package com.message.repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -7,9 +9,9 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
-import com.message.dto.domain.InviteCode;
 import com.message.dto.projection.CountProjection;
 import com.message.dto.projection.InviteCodeProjection;
+import com.message.dto.projection.UserIdProjection;
 import com.message.dto.projection.UsernameProjection;
 import com.message.entity.UserEntity;
 
@@ -19,6 +21,8 @@ import jakarta.persistence.LockModeType;
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
 	Optional<UserEntity> findByUsername(@NonNull String username);
+
+	List<UserIdProjection> findByUsernameIn(@NonNull Collection<String> usernames);
 
 	Optional<UsernameProjection> findByUserId(@NonNull Long userId);
 

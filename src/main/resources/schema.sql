@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS user_connection (
     PRIMARY KEY (partner_a_user_id, partner_b_user_id),
     INDEX idx_partner_b_user_id (partner_b_user_id),
     INDEX idx_partner_a_user_id_status (partner_a_user_id, status),
-    INDEX idx_partner_b_user_id_status (partner_b_user_id, status)
+    INDEX idx_partner_b_user_id_status (partner_b_user_id, status),
+    INDEX idx_partner_a_b_user_id_status (partner_a_user_id, partner_b_user_id, status)
 ) ENGINE=InnoDB, DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS channel (

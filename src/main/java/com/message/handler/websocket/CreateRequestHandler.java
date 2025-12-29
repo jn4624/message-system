@@ -1,6 +1,8 @@
 package com.message.handler.websocket;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
@@ -45,32 +47,39 @@ public class CreateRequestHandler implements BaseRequestHandler<CreateRequest> {
 	public void handleRequest(WebSocketSession senderSession, CreateRequest request) {
 		UserId senderUserId = (UserId)senderSession.getAttributes().get(IdKey.USER_ID.getValue());
 
-		Optional<UserId> userId = userService.getUserId(request.getParticipantUsername());
-		if (userId.isEmpty()) {
+		List<UserId> participantUserIds = userService.getUserIds(request.getParticipantUsernames());
+		if (participantUserIds.isEmpty()) {
 			webSocketSessionManager.sendMessage(
 				senderSession, new ErrorResponse(MessageType.CREATE_REQUEST, ResultType.NOT_FOUND.getMessage()));
 			return;
 		}
 
-		UserId participantUserId = userId.get();
 		Pair<Optional<Channel>, ResultType> result;
 
 		try {
-			result = channelService.create(senderUserId, participantUserId, request.getTitle());
+			result = channelService.create(senderUserId, participantUserIds, request.getTitle());
 		} catch (Exception e) {
 			webSocketSessionManager.sendMessage(
 				senderSession, new ErrorResponse(MessageType.CREATE_REQUEST, ResultType.FAILED.getMessage()));
 			return;
 		}
 
-		result.getFirst().ifPresentOrElse(channel -> {
+		if (result.getFirst().isEmpty()) {
+			webSocketSessionManager.sendMessage(
+				senderSession, new ErrorResponse(MessageType.CREATE_REQUEST, result.getSecond().getMessage()));
+			return;
+		}
+
+		Channel channel = result.getFirst().get();
+		webSocketSessionManager.sendMessage(
+			senderSession, new CreateResponse(channel.channelId(), channel.title()));
+
+		participantUserIds.forEach(participantUserId -> CompletableFuture.runAsync(() -> {
+			WebSocketSession participantSession = webSocketSessionManager.getSession(participantUserId);
+			if (participantSession != null) {
 				webSocketSessionManager.sendMessage(
-					senderSession, new CreateResponse(channel.channelId(), channel.title()));
-				webSocketSessionManager.sendMessage(
-					webSocketSessionManager.getSession(participantUserId),
-					new JoinNotification(channel.channelId(), channel.title()));
+					participantSession, new JoinNotification(channel.channelId(), channel.title()));
 			}
-			, () -> webSocketSessionManager.sendMessage(
-				senderSession, new ErrorResponse(MessageType.CREATE_REQUEST, result.getSecond().getMessage())));
+		}));
 	}
 }

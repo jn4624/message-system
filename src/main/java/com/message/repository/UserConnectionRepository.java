@@ -1,5 +1,6 @@
 package com.message.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,6 +29,12 @@ public interface UserConnectionRepository extends JpaRepository<UserConnectionEn
 
 	Optional<InviterUserIdProjection> findInviterUserIdByPartnerAUserIdAndPartnerBUserId(
 		@NonNull Long partnerAUserId, @NonNull Long partnerBUserId);
+
+	long countByPartnerAUserIdAndPartnerBUserIdInAndStatus(
+		@NonNull Long partnerAUserId, @NonNull Collection<Long> partnerBUserIds, @NonNull UserConnectionStatus status);
+
+	long countByPartnerBUserIdAndPartnerAUserIdInAndStatus(
+		@NonNull Long partnerBUserId, @NonNull Collection<Long> partnerAUserIds, @NonNull UserConnectionStatus status);
 
 	@Query(
 		"SELECT u.partnerBUserId AS userId, userB.username AS username, u.inviterUserId AS inviterUserId "

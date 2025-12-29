@@ -1,6 +1,9 @@
 package com.message.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -38,18 +41,33 @@ public class SessionService {
 		return authentication.getName();
 	}
 
-	public boolean isOnline(UserId userId, ChannelId channelId) {
-		String channelIdKey = buildChannelIdKey(userId);
+	public List<UserId> getOnlineParticipantUserIds(ChannelId channelId, List<UserId> userIds) {
+		List<String> channelIdKeys = userIds.stream().map(this::buildChannelIdKey).toList();
 
 		try {
-			String chId = stringRedisTemplate.opsForValue().get(channelIdKey);
-			if (chId != null && chId.equals(channelId.id().toString())) {
-				return true;
+			List<String> channelIds = stringRedisTemplate.opsForValue().multiGet(channelIdKeys);
+			if (channelIds != null) {
+				List<UserId> onlineParticipantUserIds = new ArrayList<>(channelIds.size());
+				for (int idx = 0; idx < userIds.size(); idx++) {
+					String value = channelIds.get(idx);
+					/*
+					  Null 체크를 하는 이유
+					  - channelIdKeys에 해당하는 Redis의 데이터가 5개 존재해도
+					    조건으로 넘긴 channelIdKeys의 개수가 10개라면 나머지 5개는 null로 채워져 조회되기 때문에
+					  - 단 데이터의 순서는 channelIdKeys의 순서대로 조회된다
+					 */
+					if (value != null && value.equals(channelId.id().toString())) {
+						onlineParticipantUserIds.add(userIds.get(idx));
+					}
+				}
+
+				return onlineParticipantUserIds;
 			}
 		} catch (Exception e) {
-			log.error("Redis get failed. key: {}, cause: {}", channelIdKey, e.getMessage());
+			log.error("Redis mget failed. keys: {}, cause: {}", channelIdKeys, e.getMessage());
 		}
-		return false;
+
+		return Collections.emptyList();
 	}
 
 	public boolean setActiveChannel(UserId userId, ChannelId channelId) {
