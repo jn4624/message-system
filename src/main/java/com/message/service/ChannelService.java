@@ -14,6 +14,7 @@ import com.message.constant.ResultType;
 import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.Channel;
 import com.message.dto.domain.ChannelId;
+import com.message.dto.domain.InviteCode;
 import com.message.dto.domain.UserId;
 import com.message.dto.projection.ChannelTitleProjection;
 import com.message.entity.ChannelEntity;
@@ -42,6 +43,17 @@ public class ChannelService {
 		this.userConnectionService = userConnectionService;
 		this.channelRepository = channelRepository;
 		this.userChannelRepository = userChannelRepository;
+	}
+
+	public Optional<InviteCode> getInviteCode(ChannelId channelId) {
+		Optional<InviteCode> inviteCode = channelRepository.findChannelInviteCodeByChannelId(channelId.id())
+			.map(inviteCodeProjection -> new InviteCode(inviteCodeProjection.getInviteCode()));
+
+		if (inviteCode.isEmpty()) {
+			log.warn("Invite code is not exist. channelId: {}", channelId);
+		}
+
+		return inviteCode;
 	}
 
 	public boolean isJoined(ChannelId channelId, UserId userId) {

@@ -2,5 +2,5 @@ package com.message.dto.projection;
 
 public interface InviteCodeProjection {
 
-	String getConnectionInviteCode();
+	String getInviteCode();
 }

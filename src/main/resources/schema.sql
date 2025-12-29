@@ -11,13 +11,13 @@ CREATE TABLE IF NOT EXISTS message_user (
     user_id BIGINT AUTO_INCREMENT,
     username VARCHAR(20) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    connection_invite_code VARCHAR(32) NOT NULL,
+    invite_code VARCHAR(32) NOT NULL,
     connection_count INT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
     PRIMARY KEY (user_id),
     CONSTRAINT unique_username UNIQUE (username),
-    CONSTRAINT unique_connection_invite_code UNIQUE (connection_invite_code)
+    CONSTRAINT unique_invite_code UNIQUE (invite_code)
 ) ENGINE=InnoDB, DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS user_connection (
@@ -37,12 +37,12 @@ CREATE TABLE IF NOT EXISTS user_connection (
 CREATE TABLE IF NOT EXISTS channel (
     channel_id BIGINT AUTO_INCREMENT,
     title VARCHAR(30) NOT NULL,
-    channel_invite_code VARCHAR(32) NOT NULL,
+    invite_code VARCHAR(32) NOT NULL,
     head_count INT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
     PRIMARY KEY (channel_id),
-    CONSTRAINT unique_channel_invite_code UNIQUE (channel_invite_code)
+    CONSTRAINT unique_invite_code UNIQUE (invite_code)
 ) ENGINE=InnoDB, DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS user_channel (

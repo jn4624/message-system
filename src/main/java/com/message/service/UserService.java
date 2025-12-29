@@ -51,13 +51,13 @@ public class UserService {
 	}
 
 	public Optional<User> getUser(InviteCode inviteCode) {
-		return userRepository.findByConnectionInviteCode(inviteCode.code())
+		return userRepository.findByInviteCode(inviteCode.code())
 			.map(entity -> new User(new UserId(entity.getUserId()), entity.getUsername()));
 	}
 
 	public Optional<InviteCode> getInviteCode(UserId userId) {
 		return userRepository.findInviteCodeByUserId(userId.id())
-			.map(inviteCode -> new InviteCode(inviteCode.getConnectionInviteCode()));
+			.map(inviteCode -> new InviteCode(inviteCode.getInviteCode()));
 	}
 
 	public Optional<Integer> getConnectionCount(UserId userId) {

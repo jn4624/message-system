@@ -26,7 +26,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
 	Optional<UsernameProjection> findByUserId(@NonNull Long userId);
 
-	Optional<UserEntity> findByConnectionInviteCode(@NonNull String connectionInviteCode);
+	Optional<UserEntity> findByInviteCode(@NonNull String inviteCode);
 
 	Optional<InviteCodeProjection> findInviteCodeByUserId(@NonNull Long userId);
 

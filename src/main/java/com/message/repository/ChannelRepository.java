@@ -7,10 +7,13 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import com.message.dto.projection.ChannelTitleProjection;
+import com.message.dto.projection.InviteCodeProjection;
 import com.message.entity.ChannelEntity;
 
 @Repository
 public interface ChannelRepository extends JpaRepository<ChannelEntity, Long> {
 
 	Optional<ChannelTitleProjection> findChannelTitleByChannelId(@NonNull Long channelId);
+
+	Optional<InviteCodeProjection> findChannelInviteCodeByChannelId(@NonNull Long channelId);
 }
