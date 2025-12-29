@@ -87,6 +87,6 @@ public class SessionService {
 
 	private String buildChannelIdKey(UserId userId) {
 		String NAMESPACE = "message:user";
-		return "%s:%d:%s".formatted(NAMESPACE, userId.id(), IdKey.CHANNEL_ID);
+		return "%s:%d:%s".formatted(NAMESPACE, userId.id(), IdKey.CHANNEL_ID.getValue());
 	}
 }
