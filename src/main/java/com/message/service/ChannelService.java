@@ -176,4 +176,23 @@ public class ChannelService {
 	public boolean leave(UserId userId) {
 		return sessionService.removeActiveChannel(userId);
 	}
+
+	@Transactional
+	public ResultType quit(ChannelId channelId, UserId userId) {
+		if (!isJoined(channelId, userId)) {
+			return ResultType.NOT_JOINED;
+		}
+
+		ChannelEntity channelEntity = channelRepository.findForUpdateByChannelId(channelId.id())
+			.orElseThrow(() -> new EntityNotFoundException("Invalid channelId: " + channelId));
+
+		if (channelEntity.getHeadCount() > 0) {
+			channelEntity.setHeadCount(channelEntity.getHeadCount() - 1);
+		} else {
+			log.error("Count is already zero. channelId: {}, userId: {}", channelId, userId);
+		}
+
+		userChannelRepository.deleteByUserIdAndChannelId(userId.id(), channelId.id());
+		return ResultType.SUCCESS;
+	}
 }

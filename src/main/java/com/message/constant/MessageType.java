@@ -24,9 +24,11 @@ public class MessageType {
 	public static final String ENTER_RESPONSE = "ENTER_RESPONSE";
 	public static final String JOIN_REQUEST = "JOIN_REQUEST";
 	public static final String JOIN_RESPONSE = "JOIN_RESPONSE";
-	public static final String WRITE_MESSAGE = "WRITE_MESSAGE";
 	public static final String LEAVE_REQUEST = "LEAVE_REQUEST";
 	public static final String LEAVE_RESPONSE = "LEAVE_RESPONSE";
+	public static final String QUIT_REQUEST = "QUIT_REQUEST";
+	public static final String QUIT_RESPONSE = "QUIT_RESPONSE";
+	public static final String WRITE_MESSAGE = "WRITE_MESSAGE";
 
 	// Notification
 	public static final String ASK_INVITE = "ASK_INVITE";

@@ -26,4 +26,6 @@ public interface UserChannelRepository extends JpaRepository<UserChannelEntity, 
 			+ "INNER JOIN ChannelEntity c ON uc.channelId = c.channelId "
 			+ "WHERE uc.userId = :userId")
 	List<ChannelProjection> findChannelsByUserId(@NonNull @Param("userId") Long userId);
+
+	void deleteByUserIdAndChannelId(@NonNull Long userId, @NonNull Long channelId);
 }
