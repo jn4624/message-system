@@ -71,6 +71,15 @@ public class ChannelService {
 		return sessionService.getOnlineParticipantUserIds(channelId, getParticipantIds(channelId));
 	}
 
+	public List<Channel> getChannels(UserId userId) {
+		return userChannelRepository.findChannelsByUserId(userId.id())
+			.stream()
+			.map(projection -> new Channel(
+				new ChannelId(
+					projection.getChannelId()), projection.getTitle(), projection.getHeadCount()))
+			.toList();
+	}
+
 	@Transactional
 	public Pair<Optional<Channel>, ResultType> create(UserId senderUserId, List<UserId> participantIds, String title) {
 		if (title == null || title.isEmpty()) {

@@ -37,6 +37,12 @@ public class UserConnectionService {
 		this.userConnectionRepository = userConnectionRepository;
 	}
 
+	/*
+	  - 2개의 조회 쿼리가 존재할 경우 DB 커넥션풀이 쓰고 반납하고가 반복된다
+	  - @Transactional(readOnly = true)을 명시적으로 붙여주면
+	    하나의 커넥션 풀에서 2개의 조회 쿼리가 실행되어 성능상으로는 좀 더 이점이 있다
+	 */
+	@Transactional(readOnly = true)
 	public List<User> getUsersByStatus(UserId userId, UserConnectionStatus status) {
 		List<UserIdUsernameInviterUserIdProjection> usersA =
 			userConnectionRepository.findByPartnerAUserIdAndStatus(userId.id(), status);
@@ -63,6 +69,7 @@ public class UserConnectionService {
 			.orElse(UserConnectionStatus.NONE);
 	}
 
+	@Transactional(readOnly = true)
 	public long countConnectionStatus(UserId senderUserId, List<UserId> partnerUserIds, UserConnectionStatus status) {
 		List<Long> ids = partnerUserIds.stream().map(UserId::id).toList();
 		return userConnectionRepository.countByPartnerAUserIdAndPartnerBUserIdInAndStatus(
