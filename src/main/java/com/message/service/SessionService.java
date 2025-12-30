@@ -82,6 +82,18 @@ public class SessionService {
 		}
 	}
 
+	public boolean removeActiveChannel(UserId userId) {
+		String channelIdKey = buildChannelIdKey(userId);
+
+		try {
+			stringRedisTemplate.delete(channelIdKey);
+			return true;
+		} catch (Exception e) {
+			log.error("Redis delete failed. key: {}", channelIdKey);
+			return false;
+		}
+	}
+
 	public void refreshTTL(UserId userId, String httpSessionId) {
 		String channelIdKey = buildChannelIdKey(userId);
 

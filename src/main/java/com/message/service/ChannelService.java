@@ -172,4 +172,8 @@ public class ChannelService {
 		log.error("Enter channel failed. channelId: {}, userId: {}", channelId, userId);
 		return Pair.of(Optional.empty(), ResultType.FAILED);
 	}
+
+	public boolean leave(UserId userId) {
+		return sessionService.removeActiveChannel(userId);
+	}
 }
