@@ -22,6 +22,8 @@ public class MessageType {
 	public static final String CREATE_RESPONSE = "CREATE_RESPONSE";
 	public static final String ENTER_REQUEST = "ENTER_REQUEST";
 	public static final String ENTER_RESPONSE = "ENTER_RESPONSE";
+	public static final String JOIN_REQUEST = "JOIN_REQUEST";
+	public static final String JOIN_RESPONSE = "JOIN_RESPONSE";
 	public static final String WRITE_MESSAGE = "WRITE_MESSAGE";
 
 	// Notification

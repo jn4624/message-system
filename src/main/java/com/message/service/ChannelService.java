@@ -22,6 +22,8 @@ import com.message.entity.UserChannelEntity;
 import com.message.repository.ChannelRepository;
 import com.message.repository.UserChannelRepository;
 
+import jakarta.persistence.EntityNotFoundException;
+
 @Service
 public class ChannelService {
 
@@ -71,12 +73,17 @@ public class ChannelService {
 		return sessionService.getOnlineParticipantUserIds(channelId, getParticipantIds(channelId));
 	}
 
+	public Optional<Channel> getChannel(InviteCode inviteCode) {
+		return channelRepository.findChannelByInviteCode(inviteCode.code())
+			.map(projection -> new Channel(
+				new ChannelId(projection.getChannelId()), projection.getTitle(), projection.getHeadCount()));
+	}
+
 	public List<Channel> getChannels(UserId userId) {
 		return userChannelRepository.findChannelsByUserId(userId.id())
 			.stream()
 			.map(projection -> new Channel(
-				new ChannelId(
-					projection.getChannelId()), projection.getTitle(), projection.getHeadCount()))
+				new ChannelId(projection.getChannelId()), projection.getTitle(), projection.getHeadCount()))
 			.toList();
 	}
 
@@ -118,6 +125,31 @@ public class ChannelService {
 			log.error("Create failed. cause: {}", e.getMessage());
 			throw e;
 		}
+	}
+
+	@Transactional
+	public Pair<Optional<Channel>, ResultType> join(InviteCode inviteCode, UserId userId) {
+		Optional<Channel> ch = getChannel(inviteCode);
+		if (ch.isEmpty()) {
+			return Pair.of(Optional.empty(), ResultType.NOT_FOUND);
+		}
+
+		Channel channel = ch.get();
+		if (isJoined(channel.channelId(), userId)) {
+			return Pair.of(Optional.empty(), ResultType.ALREADY_JOINED);
+		} else if (channel.headCount() >= LIMIT_HEAD_COUNT) {
+			return Pair.of(Optional.empty(), ResultType.OVER_LIMIT);
+		}
+
+		ChannelEntity channelEntity = channelRepository.findForUpdateByChannelId(channel.channelId().id())
+			.orElseThrow(() -> new EntityNotFoundException("Invalid channelId: " + channel.channelId().id()));
+
+		if (channelEntity.getHeadCount() < LIMIT_HEAD_COUNT) {
+			channelEntity.setHeadCount(channelEntity.getHeadCount() + 1);
+			userChannelRepository.save(new UserChannelEntity(userId.id(), channel.channelId().id(), 0));
+		}
+
+		return Pair.of(Optional.of(channel), ResultType.SUCCESS);
 	}
 
 	public Pair<Optional<String>, ResultType> enter(ChannelId channelId, UserId userId) {
