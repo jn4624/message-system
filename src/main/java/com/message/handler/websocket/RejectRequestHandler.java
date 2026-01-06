@@ -11,19 +11,21 @@ import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.RejectRequest;
 import com.message.dto.websocket.outbound.ErrorResponse;
 import com.message.dto.websocket.outbound.RejectResponse;
+import com.message.service.ClientNotificationService;
 import com.message.service.UserConnectionService;
-import com.message.session.WebSocketSessionManager;
 
 @Component
 public class RejectRequestHandler implements BaseRequestHandler<RejectRequest> {
 
 	private final UserConnectionService userConnectionService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
-	public RejectRequestHandler(UserConnectionService userConnectionService,
-		WebSocketSessionManager webSocketSessionManager) {
+	public RejectRequestHandler(
+		UserConnectionService userConnectionService,
+		ClientNotificationService clientNotificationService
+	) {
 		this.userConnectionService = userConnectionService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
@@ -32,12 +34,12 @@ public class RejectRequestHandler implements BaseRequestHandler<RejectRequest> {
 		Pair<Boolean, String> result = userConnectionService.reject(senderUserId, request.getUsername());
 
 		if (result.getFirst()) {
-			webSocketSessionManager.sendMessage(senderSession,
-				new RejectResponse(request.getUsername(), UserConnectionStatus.REJECTED));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new RejectResponse(request.getUsername(), UserConnectionStatus.REJECTED));
 		} else {
 			String errorMessage = result.getSecond();
-			webSocketSessionManager.sendMessage(senderSession,
-				new ErrorResponse(MessageType.REJECT_REQUEST, errorMessage));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new ErrorResponse(MessageType.REJECT_REQUEST, errorMessage));
 		}
 	}
 }

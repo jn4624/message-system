@@ -10,23 +10,16 @@ import com.message.dto.websocket.inbound.WriteMessage;
 import com.message.dto.websocket.outbound.MessageNotification;
 import com.message.service.MessageService;
 import com.message.service.UserService;
-import com.message.session.WebSocketSessionManager;
 
 @Component
 public class WriteMessageHandler implements BaseRequestHandler<WriteMessage> {
 
 	private final UserService userService;
 	private final MessageService messageService;
-	private final WebSocketSessionManager webSocketSessionManager;
 
-	public WriteMessageHandler(
-		UserService userService,
-		MessageService messageService,
-		WebSocketSessionManager webSocketSessionManager
-	) {
+	public WriteMessageHandler(UserService userService, MessageService messageService) {
 		this.userService = userService;
 		this.messageService = messageService;
-		this.webSocketSessionManager = webSocketSessionManager;
 	}
 
 	@Override
@@ -39,12 +32,7 @@ public class WriteMessageHandler implements BaseRequestHandler<WriteMessage> {
 		/*
 		  - 아래 부분이 실제로 메시지를 보내는 I/O가 발생하는 부분
 		 */
-		messageService.sendMessage(senderUserId, content, channelId, (participantId) -> {
-			WebSocketSession participantSession = webSocketSessionManager.getSession(participantId);
-			MessageNotification messageNotification = new MessageNotification(channelId, senderUsername, content);
-			if (participantSession != null) {
-				webSocketSessionManager.sendMessage(participantSession, messageNotification);
-			}
-		});
+		messageService.sendMessage(
+			senderUserId, content, channelId, new MessageNotification(channelId, senderUsername, content));
 	}
 }

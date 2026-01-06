@@ -10,20 +10,20 @@ import com.message.dto.websocket.inbound.LeaveRequest;
 import com.message.dto.websocket.outbound.ErrorResponse;
 import com.message.dto.websocket.outbound.LeaveResponse;
 import com.message.service.ChannelService;
-import com.message.session.WebSocketSessionManager;
+import com.message.service.ClientNotificationService;
 
 @Component
 public class LeaveRequestHandler implements BaseRequestHandler<LeaveRequest> {
 
 	private final ChannelService channelService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
 	public LeaveRequestHandler(
 		ChannelService channelService,
-		WebSocketSessionManager webSocketSessionManager
+		ClientNotificationService clientNotificationService
 	) {
 		this.channelService = channelService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
@@ -31,10 +31,10 @@ public class LeaveRequestHandler implements BaseRequestHandler<LeaveRequest> {
 		UserId senderUserId = (UserId)senderSession.getAttributes().get(IdKey.USER_ID.getValue());
 
 		if (channelService.leave(senderUserId)) {
-			webSocketSessionManager.sendMessage(senderSession, new LeaveResponse());
+			clientNotificationService.sendMessage(senderSession, senderUserId, new LeaveResponse());
 		} else {
-			webSocketSessionManager.sendMessage(
-				senderSession, new ErrorResponse(MessageType.LEAVE_REQUEST, "Leave failed"));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new ErrorResponse(MessageType.LEAVE_REQUEST, "Leave failed"));
 		}
 	}
 }

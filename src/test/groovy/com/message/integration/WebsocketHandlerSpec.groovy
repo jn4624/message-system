@@ -3,6 +3,7 @@ package com.message.integration
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.message.MessageSystemApplication
 import com.message.dto.domain.ChannelId
+import com.message.dto.domain.UserId
 import com.message.dto.websocket.inbound.WriteMessage
 import com.message.service.ChannelService
 import com.message.service.UserService
@@ -61,7 +62,11 @@ class WebsocketHandlerSpec extends Specification {
         // tuple = list - 1대1로 매칭시켜서 각각 할당 됨
         def (clientA, clientB, clientC) = [createClient(sessionIdA), createClient(sessionIdB), createClient(sessionIdC)]
 
-        channelService.getOnlineParticipantIds(_ as ChannelId) >> List.of(
+        channelService.getParticipantIds(_ as ChannelId) >> List.of(
+                userService.getUserId("testuserA").get(),
+                userService.getUserId("testuserB").get(),
+                userService.getUserId("testuserC").get())
+        channelService.getOnlineParticipantIds(_ as ChannelId, _ as List<UserId>) >> List.of(
                 userService.getUserId("testuserA").get(),
                 userService.getUserId("testuserB").get(),
                 userService.getUserId("testuserC").get())

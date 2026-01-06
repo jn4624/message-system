@@ -10,19 +10,21 @@ import com.message.dto.domain.Connection;
 import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.FetchConnectionsRequest;
 import com.message.dto.websocket.outbound.FetchConnectionsResponse;
+import com.message.service.ClientNotificationService;
 import com.message.service.UserConnectionService;
-import com.message.session.WebSocketSessionManager;
 
 @Component
 public class FetchConnectionsRequestHandler implements BaseRequestHandler<FetchConnectionsRequest> {
 
 	private final UserConnectionService userConnectionService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
-	public FetchConnectionsRequestHandler(UserConnectionService userConnectionService,
-		WebSocketSessionManager webSocketSessionManager) {
+	public FetchConnectionsRequestHandler(
+		UserConnectionService userConnectionService,
+		ClientNotificationService clientNotificationService
+	) {
 		this.userConnectionService = userConnectionService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
@@ -31,6 +33,6 @@ public class FetchConnectionsRequestHandler implements BaseRequestHandler<FetchC
 		List<Connection> connections = userConnectionService.getUsersByStatus(senderUserId, request.getStatus())
 			.stream().map(user -> new Connection(user.username(), request.getStatus())).toList();
 
-		webSocketSessionManager.sendMessage(senderSession, new FetchConnectionsResponse(connections));
+		clientNotificationService.sendMessage(senderSession, senderUserId, new FetchConnectionsResponse(connections));
 	}
 }

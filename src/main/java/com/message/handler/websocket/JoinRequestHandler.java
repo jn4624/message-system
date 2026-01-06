@@ -16,20 +16,20 @@ import com.message.dto.websocket.inbound.JoinRequest;
 import com.message.dto.websocket.outbound.ErrorResponse;
 import com.message.dto.websocket.outbound.JoinResponse;
 import com.message.service.ChannelService;
-import com.message.session.WebSocketSessionManager;
+import com.message.service.ClientNotificationService;
 
 @Component
 public class JoinRequestHandler implements BaseRequestHandler<JoinRequest> {
 
 	private final ChannelService channelService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
 	public JoinRequestHandler(
 		ChannelService channelService,
-		WebSocketSessionManager webSocketSessionManager
+		ClientNotificationService clientNotificationService
 	) {
 		this.channelService = channelService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
@@ -41,15 +41,18 @@ public class JoinRequestHandler implements BaseRequestHandler<JoinRequest> {
 		try {
 			result = channelService.join(request.getInviteCode(), senderUserId);
 		} catch (Exception e) {
-			webSocketSessionManager.sendMessage(
-				senderSession, new ErrorResponse(MessageType.JOIN_REQUEST, ResultType.FAILED.getMessage()));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new ErrorResponse(
+					MessageType.JOIN_REQUEST, ResultType.FAILED.getMessage()));
 			return;
 		}
 
 		result.getFirst().ifPresentOrElse(channel ->
-				webSocketSessionManager.sendMessage(
-					senderSession, new JoinResponse(new ChannelId(channel.channelId().id()), channel.title()))
-			, () -> webSocketSessionManager.sendMessage(
-				senderSession, new ErrorResponse(MessageType.JOIN_REQUEST, result.getSecond().getMessage())));
+				clientNotificationService.sendMessage(
+					senderSession, senderUserId, new JoinResponse(
+						new ChannelId(channel.channelId().id()), channel.title()))
+			, () -> clientNotificationService.sendMessage(
+				senderSession, senderUserId, new ErrorResponse(
+					MessageType.JOIN_REQUEST, result.getSecond().getMessage())));
 	}
 }

@@ -11,19 +11,21 @@ import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.DisconnectRequest;
 import com.message.dto.websocket.outbound.DisconnectResponse;
 import com.message.dto.websocket.outbound.ErrorResponse;
+import com.message.service.ClientNotificationService;
 import com.message.service.UserConnectionService;
-import com.message.session.WebSocketSessionManager;
 
 @Component
 public class DisconnectRequestHandler implements BaseRequestHandler<DisconnectRequest> {
 
 	private final UserConnectionService userConnectionService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
-	public DisconnectRequestHandler(UserConnectionService userConnectionService,
-		WebSocketSessionManager webSocketSessionManager) {
+	public DisconnectRequestHandler(
+		UserConnectionService userConnectionService,
+		ClientNotificationService clientNotificationService
+	) {
 		this.userConnectionService = userConnectionService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
@@ -32,12 +34,13 @@ public class DisconnectRequestHandler implements BaseRequestHandler<DisconnectRe
 		Pair<Boolean, String> result = userConnectionService.disconnect(senderUserId, request.getUsername());
 
 		if (result.getFirst()) {
-			webSocketSessionManager.sendMessage(senderSession,
-				new DisconnectResponse(request.getUsername(), UserConnectionStatus.DISCONNECTED));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new DisconnectResponse(
+					request.getUsername(), UserConnectionStatus.DISCONNECTED));
 		} else {
 			String errorMessage = result.getSecond();
-			webSocketSessionManager.sendMessage(senderSession,
-				new ErrorResponse(MessageType.DISCONNECT_REQUEST, errorMessage));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new ErrorResponse(MessageType.DISCONNECT_REQUEST, errorMessage));
 		}
 	}
 }

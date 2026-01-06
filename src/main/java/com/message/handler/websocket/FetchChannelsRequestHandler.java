@@ -8,24 +8,27 @@ import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.FetchChannelsRequest;
 import com.message.dto.websocket.outbound.FetchChannelsResponse;
 import com.message.service.ChannelService;
-import com.message.session.WebSocketSessionManager;
+import com.message.service.ClientNotificationService;
 
 @Component
 public class FetchChannelsRequestHandler implements BaseRequestHandler<FetchChannelsRequest> {
 
 	private final ChannelService channelService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
-	public FetchChannelsRequestHandler(ChannelService channelService, WebSocketSessionManager webSocketSessionManager) {
+	public FetchChannelsRequestHandler(
+		ChannelService channelService,
+		ClientNotificationService clientNotificationService
+	) {
 		this.channelService = channelService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
 	public void handleRequest(WebSocketSession senderSession, FetchChannelsRequest request) {
 		UserId senderUserId = (UserId)senderSession.getAttributes().get(IdKey.USER_ID.getValue());
 
-		webSocketSessionManager.sendMessage(
-			senderSession, new FetchChannelsResponse(channelService.getChannels(senderUserId)));
+		clientNotificationService.sendMessage(
+			senderSession, senderUserId, new FetchChannelsResponse(channelService.getChannels(senderUserId)));
 	}
 }

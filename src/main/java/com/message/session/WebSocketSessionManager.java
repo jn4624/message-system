@@ -1,5 +1,6 @@
 package com.message.session;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,8 +12,6 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import com.message.dto.domain.UserId;
-import com.message.dto.websocket.outbound.BaseMessage;
-import com.message.util.JsonUtil;
 
 @Component
 public class WebSocketSessionManager {
@@ -20,11 +19,6 @@ public class WebSocketSessionManager {
 	private static final Logger log = LoggerFactory.getLogger(WebSocketSessionManager.class);
 	// 멀티 스레드가 접근할 예정이라 ConcurrentHashMap 사용
 	private final Map<UserId, WebSocketSession> sessions = new ConcurrentHashMap<>();
-	private final JsonUtil jsonUtil;
-
-	public WebSocketSessionManager(JsonUtil jsonUtil) {
-		this.jsonUtil = jsonUtil;
-	}
 
 	public List<WebSocketSession> getSessions() {
 		return sessions.values().stream().toList();
@@ -52,14 +46,13 @@ public class WebSocketSessionManager {
 		}
 	}
 
-	public void sendMessage(WebSocketSession session, BaseMessage message) {
-		jsonUtil.toJson(message).ifPresent(msg -> {
-			try {
-				session.sendMessage(new TextMessage(msg));
-				log.info("send message: {} to {}", msg, session.getId());
-			} catch (Exception e) {
-				log.error("메시지 전송 실패 cause: {}", e.getMessage());
-			}
-		});
+	public void sendMessage(WebSocketSession session, String message) throws IOException {
+		try {
+			session.sendMessage(new TextMessage(message));
+			log.info("send message: {} to {}", message, session.getId());
+		} catch (IOException e) {
+			log.error("Send message failed. cause: {}", e.getMessage());
+			throw e;
+		}
 	}
 }

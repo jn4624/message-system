@@ -56,9 +56,8 @@ public class SessionService {
 					    조건으로 넘긴 channelIdKeys의 개수가 10개라면 나머지 5개는 null로 채워져 조회되기 때문에
 					  - 단 데이터의 순서는 channelIdKeys의 순서대로 조회된다
 					 */
-					if (value != null && value.equals(channelId.id().toString())) {
-						onlineParticipantUserIds.add(userIds.get(idx));
-					}
+					onlineParticipantUserIds.add(
+						(value != null && value.equals(channelId.id().toString())) ? userIds.get(idx) : null);
 				}
 
 				return onlineParticipantUserIds;

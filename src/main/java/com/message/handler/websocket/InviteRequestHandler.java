@@ -14,19 +14,21 @@ import com.message.dto.websocket.inbound.InviteRequest;
 import com.message.dto.websocket.outbound.ErrorResponse;
 import com.message.dto.websocket.outbound.InviteNotification;
 import com.message.dto.websocket.outbound.InviteResponse;
+import com.message.service.ClientNotificationService;
 import com.message.service.UserConnectionService;
-import com.message.session.WebSocketSessionManager;
 
 @Component
 public class InviteRequestHandler implements BaseRequestHandler<InviteRequest> {
 
 	private final UserConnectionService userConnectionService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
-	public InviteRequestHandler(UserConnectionService userConnectionService,
-		WebSocketSessionManager webSocketSessionManager) {
+	public InviteRequestHandler(
+		UserConnectionService userConnectionService,
+		ClientNotificationService clientNotificationService
+	) {
 		this.userConnectionService = userConnectionService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
@@ -38,15 +40,15 @@ public class InviteRequestHandler implements BaseRequestHandler<InviteRequest> {
 		result.getFirst().ifPresentOrElse(partnerUserId -> {
 			String inviterUsername = result.getSecond();
 
-			webSocketSessionManager.sendMessage(
-				senderSession, new InviteResponse(request.getUserInviteCode(), UserConnectionStatus.PENDING));
+			clientNotificationService.sendMessage(
+				senderSession, inviterUserId, new InviteResponse(
+					request.getUserInviteCode(), UserConnectionStatus.PENDING));
 
-			webSocketSessionManager.sendMessage(
-				webSocketSessionManager.getSession(partnerUserId), new InviteNotification(inviterUsername));
+			clientNotificationService.sendMessage(partnerUserId, new InviteNotification(inviterUsername));
 		}, () -> {
 			String errorMessage = result.getSecond();
-			webSocketSessionManager.sendMessage(
-				senderSession, new ErrorResponse(MessageType.INVITE_REQUEST, errorMessage));
+			clientNotificationService.sendMessage(
+				senderSession, inviterUserId, new ErrorResponse(MessageType.INVITE_REQUEST, errorMessage));
 		});
 	}
 }

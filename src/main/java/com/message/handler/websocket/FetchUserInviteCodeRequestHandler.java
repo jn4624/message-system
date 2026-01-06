@@ -9,28 +9,31 @@ import com.message.dto.domain.UserId;
 import com.message.dto.websocket.inbound.FetchUserInviteCodeRequest;
 import com.message.dto.websocket.outbound.ErrorResponse;
 import com.message.dto.websocket.outbound.FetchUserInviteCodeResponse;
+import com.message.service.ClientNotificationService;
 import com.message.service.UserService;
-import com.message.session.WebSocketSessionManager;
 
 @Component
 public class FetchUserInviteCodeRequestHandler implements BaseRequestHandler<FetchUserInviteCodeRequest> {
 
 	private final UserService userService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
-	public FetchUserInviteCodeRequestHandler(UserService userService,
-		WebSocketSessionManager webSocketSessionManager) {
+	public FetchUserInviteCodeRequestHandler(
+		UserService userService,
+		ClientNotificationService clientNotificationService
+	) {
 		this.userService = userService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
 	public void handleRequest(WebSocketSession senderSession, FetchUserInviteCodeRequest request) {
 		UserId senderUserId = (UserId)senderSession.getAttributes().get(IdKey.USER_ID.getValue());
 		userService.getInviteCode(senderUserId)
-			.ifPresentOrElse(inviteCode -> webSocketSessionManager.sendMessage(senderSession,
-					new FetchUserInviteCodeResponse(inviteCode)),
-				() -> webSocketSessionManager.sendMessage(senderSession, new ErrorResponse(
-					MessageType.FETCH_USER_INVITE_CODE_REQUEST, "Fetch user invite code failed")));
+			.ifPresentOrElse(inviteCode -> clientNotificationService.sendMessage(
+					senderSession, senderUserId, new FetchUserInviteCodeResponse(inviteCode)),
+				() -> clientNotificationService.sendMessage(
+					senderSession, senderUserId, new ErrorResponse(
+						MessageType.FETCH_USER_INVITE_CODE_REQUEST, "Fetch user invite code failed")));
 	}
 }

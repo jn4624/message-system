@@ -11,20 +11,20 @@ import com.message.dto.websocket.inbound.QuitRequest;
 import com.message.dto.websocket.outbound.ErrorResponse;
 import com.message.dto.websocket.outbound.QuitResponse;
 import com.message.service.ChannelService;
-import com.message.session.WebSocketSessionManager;
+import com.message.service.ClientNotificationService;
 
 @Component
 public class QuitRequestHandler implements BaseRequestHandler<QuitRequest> {
 
 	private final ChannelService channelService;
-	private final WebSocketSessionManager webSocketSessionManager;
+	private final ClientNotificationService clientNotificationService;
 
 	public QuitRequestHandler(
 		ChannelService channelService,
-		WebSocketSessionManager webSocketSessionManager
+		ClientNotificationService clientNotificationService
 	) {
 		this.channelService = channelService;
-		this.webSocketSessionManager = webSocketSessionManager;
+		this.clientNotificationService = clientNotificationService;
 	}
 
 	@Override
@@ -36,17 +36,18 @@ public class QuitRequestHandler implements BaseRequestHandler<QuitRequest> {
 		try {
 			result = channelService.quit(request.getChannelId(), senderUserId);
 		} catch (Exception e) {
-			webSocketSessionManager.sendMessage(
-				senderSession, new ErrorResponse(MessageType.QUIT_REQUEST, ResultType.FAILED.getMessage()));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new ErrorResponse(
+					MessageType.QUIT_REQUEST, ResultType.FAILED.getMessage()));
 			return;
 		}
 
 		if (result == ResultType.SUCCESS) {
-			webSocketSessionManager.sendMessage(
-				senderSession, new QuitResponse(request.getChannelId()));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new QuitResponse(request.getChannelId()));
 		} else {
-			webSocketSessionManager.sendMessage(
-				senderSession, new ErrorResponse(MessageType.QUIT_REQUEST, result.getMessage()));
+			clientNotificationService.sendMessage(
+				senderSession, senderUserId, new ErrorResponse(MessageType.QUIT_REQUEST, result.getMessage()));
 		}
 	}
 }
