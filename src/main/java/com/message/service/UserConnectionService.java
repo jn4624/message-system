@@ -61,14 +61,6 @@ public class UserConnectionService {
 		}
 	}
 
-	public UserConnectionStatus getStatus(UserId inviterUserId, UserId partnerUserId) {
-		return userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(
-				Long.min(inviterUserId.id(), partnerUserId.id()),
-				Long.max(inviterUserId.id(), partnerUserId.id()))
-			.map(status -> UserConnectionStatus.valueOf(status.getStatus()))
-			.orElse(UserConnectionStatus.NONE);
-	}
-
 	@Transactional(readOnly = true)
 	public long countConnectionStatus(UserId senderUserId, List<UserId> partnerUserIds, UserConnectionStatus status) {
 		List<Long> ids = partnerUserIds.stream().map(UserId::id).toList();
@@ -78,6 +70,7 @@ public class UserConnectionService {
 			senderUserId.id(), ids, status);
 	}
 
+	@Transactional
 	public Pair<Optional<UserId>, String> invite(UserId inviterUserId, InviteCode inviteCode) {
 		Optional<User> partner = userService.getUser(inviteCode); // 연결할 대상
 		if (partner.isEmpty()) {
@@ -121,6 +114,7 @@ public class UserConnectionService {
 		};
 	}
 
+	@Transactional
 	public Pair<Optional<UserId>, String> accept(UserId accepterUserId, String inviterUsername) {
 		Optional<UserId> userId = userService.getUserId(inviterUsername);
 		if (userId.isEmpty()) {
@@ -162,6 +156,7 @@ public class UserConnectionService {
 		}
 	}
 
+	@Transactional
 	public Pair<Boolean, String> reject(UserId senderUserId, String inviterUsername) {
 		return userService.getUserId(inviterUsername)
 			.filter(inviterUserId -> !inviterUserId.equals(senderUserId))
@@ -179,6 +174,7 @@ public class UserConnectionService {
 			}).orElse(Pair.of(false, "Reject failed"));
 	}
 
+	@Transactional
 	public Pair<Boolean, String> disconnect(UserId senderUserId, String partnerUsername) {
 		return userService.getUserId(partnerUsername)
 			.filter(partnerUserId -> !senderUserId.equals(partnerUserId))
@@ -202,11 +198,21 @@ public class UserConnectionService {
 			}).orElse(Pair.of(false, "Disconnect failed"));
 	}
 
+	@Transactional(readOnly = true)
 	private Optional<UserId> getInviterUserId(UserId parterAUserId, UserId parterBUserId) {
 		return userConnectionRepository.findInviterUserIdByPartnerAUserIdAndPartnerBUserId(
 				Long.min(parterAUserId.id(), parterBUserId.id()),
 				Long.max(parterAUserId.id(), parterBUserId.id()))
 			.map(inviterUserIdProjection -> new UserId(inviterUserIdProjection.getInviterUserId()));
+	}
+
+	@Transactional(readOnly = true)
+	private UserConnectionStatus getStatus(UserId inviterUserId, UserId partnerUserId) {
+		return userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(
+				Long.min(inviterUserId.id(), partnerUserId.id()),
+				Long.max(inviterUserId.id(), partnerUserId.id()))
+			.map(status -> UserConnectionStatus.valueOf(status.getStatus()))
+			.orElse(UserConnectionStatus.NONE);
 	}
 
 	@Transactional

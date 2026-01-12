@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.WebSocketSession;
 
 import com.message.constant.MessageType;
@@ -49,6 +50,7 @@ public class MessageService {
 		pushService.registerPushMessageType(MessageType.NOTIFY_MESSAGE);
 	}
 
+	@Transactional
 	public void sendMessage(UserId sendUserId, String content, ChannelId channelId, BaseMessage message) {
 		Optional<String> json = jsonUtil.toJson(message);
 		if (json.isEmpty()) {

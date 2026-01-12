@@ -6,6 +6,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.message.entity.UserEntity;
 import com.message.repository.UserRepository;
 
@@ -21,6 +23,7 @@ public class MessageUserDetailsService implements UserDetailsService {
 
 	// Filter 내부에서 자동으로 사용될 예정
 	@Override
+	@Transactional(readOnly = true)
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 		UserEntity userEntity = userRepository.findByUsername(username)
 			.orElseThrow(() -> {
