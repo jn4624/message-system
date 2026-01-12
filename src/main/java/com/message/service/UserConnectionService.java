@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.InviteCode;
@@ -102,6 +104,7 @@ public class UserConnectionService {
 					setStatus(inviterUserId, partnerUserId, UserConnectionStatus.PENDING);
 					yield Pair.of(Optional.of(partnerUserId), inviterUsername.get());
 				} catch (Exception e) {
+					TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
 					log.error("Set pending failed. cause: {}", e.getMessage());
 					yield Pair.of(Optional.empty(), "InviteRequest failed");
 				}
@@ -114,6 +117,21 @@ public class UserConnectionService {
 		};
 	}
 
+	/*
+	  동시성이 깨지는 이슈 발생
+	  - 원인:
+	    - 기존에는 accept 메서드에 트랜잭션 어노테이션을 선언하지 않아
+	      메서드 내부에서 데이터베이스에 접근할 때 각각 별도의 커넥션을 사용했다
+	    - 하지만 readonly 처리를 적용하면서 트랜잭션 어노테이션이 선언되어
+	      accept 메서드 내부에서 데이터베이스에 접근할 때 하나의 커넥션을 함께 사용하게 되었다
+	    - 이때 accept 비즈니스 로직 중 UserEntity를 조회하는 쿼리가 여러개이고
+	      락 + UserEntity 조회 쿼리보다 UserEntity 조회 쿼리가 우선 실행된다면
+	      JPA는 락 + UserEntity 조회를 실행할 때 이전에 조회한 데이터를 영속성 컨텍스트에서 꺼내 반환한다
+	    - 따라서 락 + 조회 쿼리는 실행되지 않고 락이 걸리지 않게 된다
+	  - 해결방법:
+	    1. UserEntity 조회 쿼리를 중복 사용하지 말고 명시적으로 필요한 쿼리를 생성하여 사용한다
+	    2. 내부 트랜잭션 전파를(락 + 조회) Propagation.REQUIRES_NEW로 변경한다
+	 */
 	@Transactional
 	public Pair<Optional<UserId>, String> accept(UserId accepterUserId, String inviterUsername) {
 		Optional<UserId> userId = userService.getUserId(inviterUsername);
@@ -149,8 +167,26 @@ public class UserConnectionService {
 			userConnectionLimitService.accept(accepterUserId, inviterUserId);
 			return Pair.of(Optional.of(inviterUserId), acceptUsername.get());
 		} catch (IllegalStateException e) {
+			/*
+			   - 내부 트랜잭션에서 발생한 IllegalStateException 예외가 외부로 전파되었지만
+			     외부 트랜잭션에서는 해당 예외를 catch로 처리하였기 때문에 외부 트랜잭션은 커밋을 시도한다
+			   - 하지만 트랜잭션은 각 트랜잭션의 상태를 저장해놓기 때문에
+			     외부 트랜잭션이 커밋하는 시점에 내부 트랜잭션이 롤백되었다는 사실을 알고 아래와 같은 예외를 발생시킨다
+			     Exception in thread "Thread-11" org.springframework.transaction.UnexpectedRollbackException:
+			     Transaction silently rolled back because it has been marked as rollback-only 예외가 발생한다
+			   - 따라서 예외 없이 외부 트랜잭션도 정상 처리되게 하려면 의도적으로 롤백 처리를 해줘야 한다
+			   - 의도적인 롤백 처리시 문제 발생:
+			     - 스프링부트를 사용하지 않는 단위 테스트의 경우 트랜잭션의 상태가 존재하지 않아 예외가 발생한다
+			     - 이를 해결하기 위해서는 트랜잭션이 활성화되었는지 확인 먼저 하는 방어 코드를 추가한다
+			 */
+			if (TransactionSynchronizationManager.isActualTransactionActive()) { // 트랜잭션 활성화 여부 체크
+				TransactionAspectSupport.currentTransactionStatus().setRollbackOnly(); // 의도적인 롤백 처리
+			}
 			return Pair.of(Optional.empty(), e.getMessage());
 		} catch (Exception e) {
+			if (TransactionSynchronizationManager.isActualTransactionActive()) {
+				TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+			}
 			log.error("Accept failed. cause: {}", e.getMessage());
 			return Pair.of(Optional.empty(), "Accept failed");
 		}
@@ -168,6 +204,7 @@ public class UserConnectionService {
 					setStatus(inviterUserId, senderUserId, UserConnectionStatus.REJECTED);
 					return Pair.of(true, inviterUsername);
 				} catch (Exception e) {
+					TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
 					log.error("Set rejected failed. cause: {}", e.getMessage());
 					return Pair.of(false, "Reject failed");
 				}
@@ -191,6 +228,9 @@ public class UserConnectionService {
 						return Pair.of(true, partnerUsername);
 					}
 				} catch (Exception e) {
+					if (TransactionSynchronizationManager.isActualTransactionActive()) {
+						TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+					}
 					log.error("Disconnect failed. cause: {}", e.getMessage());
 				}
 

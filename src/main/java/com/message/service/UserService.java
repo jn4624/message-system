@@ -42,7 +42,8 @@ public class UserService {
 
 	@Transactional(readOnly = true)
 	public Optional<UserId> getUserId(String username) {
-		return userRepository.findByUsername(username).map(userEntity -> new UserId(userEntity.getUserId()));
+		return userRepository.findUserIdByUsername(username)
+			.map(projection -> new UserId(projection.getUserId()));
 	}
 
 	@Transactional(readOnly = true)
