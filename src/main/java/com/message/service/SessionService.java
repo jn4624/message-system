@@ -4,11 +4,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.session.Session;
@@ -16,6 +14,7 @@ import org.springframework.session.SessionRepository;
 import org.springframework.stereotype.Service;
 
 import com.message.constant.IdKey;
+import com.message.constant.KeyPrefix;
 import com.message.dto.domain.ChannelId;
 import com.message.dto.domain.UserId;
 
@@ -25,15 +24,15 @@ public class SessionService {
 	private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
 	private final SessionRepository<? extends Session> httpSessionRepository;
-	private final StringRedisTemplate stringRedisTemplate;
+	private final CacheService cacheService;
 	private final long TTL = 300;
 
 	public SessionService(
 		SessionRepository<? extends Session> httpSessionRepository,
-		StringRedisTemplate stringRedisTemplate
+		CacheService cacheService
 	) {
 		this.httpSessionRepository = httpSessionRepository;
-		this.stringRedisTemplate = stringRedisTemplate;
+		this.cacheService = cacheService;
 	}
 
 	public String getUsername() {
@@ -43,54 +42,34 @@ public class SessionService {
 
 	public List<UserId> getOnlineParticipantUserIds(ChannelId channelId, List<UserId> userIds) {
 		List<String> channelIdKeys = userIds.stream().map(this::buildChannelIdKey).toList();
+		List<String> channelIds = cacheService.get(channelIdKeys);
 
-		try {
-			List<String> channelIds = stringRedisTemplate.opsForValue().multiGet(channelIdKeys);
-			if (channelIds != null) {
-				List<UserId> onlineParticipantUserIds = new ArrayList<>(channelIds.size());
-				for (int idx = 0; idx < userIds.size(); idx++) {
-					String value = channelIds.get(idx);
+		if (channelIds != null) {
+			List<UserId> onlineParticipantUserIds = new ArrayList<>(channelIds.size());
+			for (int idx = 0; idx < userIds.size(); idx++) {
+				String value = channelIds.get(idx);
 					/*
 					  Null 체크를 하는 이유
 					  - channelIdKeys에 해당하는 Redis의 데이터가 5개 존재해도
 					    조건으로 넘긴 channelIdKeys의 개수가 10개라면 나머지 5개는 null로 채워져 조회되기 때문에
 					  - 단 데이터의 순서는 channelIdKeys의 순서대로 조회된다
 					 */
-					onlineParticipantUserIds.add(
-						(value != null && value.equals(channelId.id().toString())) ? userIds.get(idx) : null);
-				}
-
-				return onlineParticipantUserIds;
+				onlineParticipantUserIds.add(
+					(value != null && value.equals(channelId.id().toString())) ? userIds.get(idx) : null);
 			}
-		} catch (Exception e) {
-			log.error("Redis mget failed. keys: {}, cause: {}", channelIdKeys, e.getMessage());
+
+			return onlineParticipantUserIds;
 		}
 
 		return Collections.emptyList();
 	}
 
 	public boolean setActiveChannel(UserId userId, ChannelId channelId) {
-		String channelIdKey = buildChannelIdKey(userId);
-
-		try {
-			stringRedisTemplate.opsForValue().set(channelIdKey, channelId.id().toString(), TTL, TimeUnit.SECONDS);
-			return true;
-		} catch (Exception e) {
-			log.error("Redis set failed. key: {}, channelId: {}", channelIdKey, channelId);
-			return false;
-		}
+		return cacheService.set(buildChannelIdKey(userId), channelId.id().toString(), TTL);
 	}
 
 	public boolean removeActiveChannel(UserId userId) {
-		String channelIdKey = buildChannelIdKey(userId);
-
-		try {
-			stringRedisTemplate.delete(channelIdKey);
-			return true;
-		} catch (Exception e) {
-			log.error("Redis delete failed. key: {}", channelIdKey);
-			return false;
-		}
+		return cacheService.delete(buildChannelIdKey(userId));
 	}
 
 	public void refreshTTL(UserId userId, String httpSessionId) {
@@ -107,15 +86,14 @@ public class SessionService {
 			  - 따라서 RedisSessionConfig의 설정을 변경하는 방법으로 진행한다.
 			 */
 				httpSession.setLastAccessedTime(Instant.now());
-				stringRedisTemplate.expire(channelIdKey, TTL, TimeUnit.SECONDS);
+				cacheService.expire(channelIdKey, TTL);
 			}
 		} catch (Exception e) {
-			log.error("Redis expire failed. key: {}", channelIdKey);
+			log.error("Redis find failed. httpSessionId: {}, cause: {}", httpSessionId, e.getMessage());
 		}
 	}
 
 	private String buildChannelIdKey(UserId userId) {
-		String NAMESPACE = "message:user";
-		return "%s:%d:%s".formatted(NAMESPACE, userId.id(), IdKey.CHANNEL_ID.getValue());
+		return cacheService.buildKey(KeyPrefix.USER, userId.id().toString(), IdKey.CHANNEL_ID.getValue());
 	}
 }

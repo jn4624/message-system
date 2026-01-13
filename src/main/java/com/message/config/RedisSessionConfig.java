@@ -9,10 +9,11 @@ import org.springframework.session.FlushMode;
 import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.message.constant.KeyPrefix;
 
 @Configuration
 @EnableRedisHttpSession(
-	redisNamespace = "message:user_session",
+	redisNamespace = KeyPrefix.USER_SESSION,
 	maxInactiveIntervalInSeconds = 300, // TTL: 5분
 	/*
 	  - ON_SAVE(default): save가 명시적으로 호출될 때 저장
