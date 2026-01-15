@@ -10,6 +10,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.message.constant.KeyPrefix;
 import com.message.constant.ResultType;
 import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.Channel;
@@ -21,6 +22,7 @@ import com.message.entity.ChannelEntity;
 import com.message.entity.UserChannelEntity;
 import com.message.repository.ChannelRepository;
 import com.message.repository.UserChannelRepository;
+import com.message.util.JsonUtil;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -32,44 +34,89 @@ public class ChannelService {
 
 	private final SessionService sessionService;
 	private final UserConnectionService userConnectionService;
+	private final CacheService cacheService;
 	private final ChannelRepository channelRepository;
 	private final UserChannelRepository userChannelRepository;
+	private final JsonUtil jsonUtil;
+	private final long TTL = 600;
 
 	public ChannelService(
 		SessionService sessionService,
 		UserConnectionService userConnectionService,
+		CacheService cacheService,
 		ChannelRepository channelRepository,
-		UserChannelRepository userChannelRepository
+		UserChannelRepository userChannelRepository,
+		JsonUtil jsonUtil
 	) {
 		this.sessionService = sessionService;
 		this.userConnectionService = userConnectionService;
+		this.cacheService = cacheService;
 		this.channelRepository = channelRepository;
 		this.userChannelRepository = userChannelRepository;
+		this.jsonUtil = jsonUtil;
 	}
 
 	@Transactional(readOnly = true)
 	public Optional<InviteCode> getInviteCode(ChannelId channelId) {
-		Optional<InviteCode> inviteCode = channelRepository.findChannelInviteCodeByChannelId(channelId.id())
-			.map(inviteCodeProjection -> new InviteCode(inviteCodeProjection.getInviteCode()));
+		String key = cacheService.buildKey(KeyPrefix.CHANNEL_INVITE_CODE, channelId.id().toString());
+		Optional<String> cachedInviteCode = cacheService.get(key);
 
-		if (inviteCode.isEmpty()) {
+		if (cachedInviteCode.isPresent()) {
+			return Optional.of(new InviteCode(cachedInviteCode.get()));
+		}
+
+		Optional<InviteCode> findInviteCode =
+			channelRepository.findChannelInviteCodeByChannelId(channelId.id())
+				.map(inviteCodeProjection ->
+					new InviteCode(inviteCodeProjection.getInviteCode()));
+
+		if (findInviteCode.isEmpty()) {
 			log.warn("Invite code is not exist. channelId: {}", channelId);
 		}
 
-		return inviteCode;
+		findInviteCode.ifPresent(inviteCode -> cacheService.set(key, inviteCode.code(), TTL));
+		return findInviteCode;
 	}
 
 	@Transactional(readOnly = true)
 	public boolean isJoined(ChannelId channelId, UserId userId) {
-		return userChannelRepository.existsByUserIdAndChannelId(userId.id(), channelId.id());
+		String key = cacheService.buildKey(KeyPrefix.JOINED_CHANNEL, channelId.id().toString(), userId.id().toString());
+		Optional<String> cachedChannel = cacheService.get(key);
+
+		if (cachedChannel.isPresent()) {
+			return true;
+		}
+
+		boolean findJoined = userChannelRepository.existsByUserIdAndChannelId(userId.id(), channelId.id());
+		if (findJoined) {
+			cacheService.set(key, "T", TTL);
+		}
+		return findJoined;
 	}
 
 	@Transactional(readOnly = true)
 	public List<UserId> getParticipantIds(ChannelId channelId) {
-		return userChannelRepository.findUserIdsByChannelId(channelId.id())
+		String key = cacheService.buildKey(KeyPrefix.PARTICIPANT_IDS, channelId.id().toString());
+		Optional<String> cachedParticipantIds = cacheService.get(key);
+
+		if (cachedParticipantIds.isPresent()) {
+			return jsonUtil.fromJsonToList(cachedParticipantIds.get(), String.class)
+				.stream()
+				.map(userId -> new UserId(Long.valueOf(userId)))
+				.toList();
+		}
+
+		List<UserId> findParticipantIds = userChannelRepository.findUserIdsByChannelId(channelId.id())
 			.stream()
 			.map(userId -> new UserId(userId.getUserId()))
 			.toList();
+		if (!findParticipantIds.isEmpty()) {
+			jsonUtil.toJson(findParticipantIds
+					.stream()
+					.map(UserId::id))
+				.ifPresent(json -> cacheService.set(key, json, TTL));
+		}
+		return findParticipantIds;
 	}
 
 	public List<UserId> getOnlineParticipantIds(ChannelId channelId, List<UserId> userIds) {
@@ -78,18 +125,40 @@ public class ChannelService {
 
 	@Transactional(readOnly = true)
 	public Optional<Channel> getChannel(InviteCode inviteCode) {
-		return channelRepository.findChannelByInviteCode(inviteCode.code())
+		String key = cacheService.buildKey(KeyPrefix.CHANNEL, inviteCode.code());
+		Optional<String> cachedChannel = cacheService.get(key);
+
+		if (cachedChannel.isPresent()) {
+			return jsonUtil.fromJson(cachedChannel.get(), Channel.class);
+		}
+
+		Optional<Channel> findChannel = channelRepository.findChannelByInviteCode(inviteCode.code())
 			.map(projection -> new Channel(
 				new ChannelId(projection.getChannelId()), projection.getTitle(), projection.getHeadCount()));
+		findChannel.flatMap(jsonUtil::toJson)
+			.ifPresent(json -> cacheService.set(key, json, TTL));
+		return findChannel;
 	}
 
 	@Transactional(readOnly = true)
 	public List<Channel> getChannels(UserId userId) {
-		return userChannelRepository.findChannelsByUserId(userId.id())
+		String key = cacheService.buildKey(KeyPrefix.CHANNELS, userId.id().toString());
+		Optional<String> cachedChannels = cacheService.get(key);
+
+		if (cachedChannels.isPresent()) {
+			return jsonUtil.fromJsonToList(cachedChannels.get(), Channel.class);
+		}
+
+		List<Channel> findChannels = userChannelRepository.findChannelsByUserId(userId.id())
 			.stream()
 			.map(projection -> new Channel(
 				new ChannelId(projection.getChannelId()), projection.getTitle(), projection.getHeadCount()))
 			.toList();
+		if (!findChannels.isEmpty()) {
+			jsonUtil.toJson(findChannels)
+				.ifPresent(json -> cacheService.set(key, json, TTL));
+		}
+		return findChannels;
 	}
 
 	@Transactional
@@ -152,6 +221,9 @@ public class ChannelService {
 		if (channelEntity.getHeadCount() < LIMIT_HEAD_COUNT) {
 			channelEntity.setHeadCount(channelEntity.getHeadCount() + 1);
 			userChannelRepository.save(new UserChannelEntity(userId.id(), channel.channelId().id(), 0));
+			cacheService.delete(List.of(
+				cacheService.buildKey(KeyPrefix.CHANNEL, channelEntity.getInviteCode()),
+				cacheService.buildKey(KeyPrefix.CHANNELS, userId.id().toString())));
 		}
 
 		return Pair.of(Optional.of(channel), ResultType.SUCCESS);
@@ -199,6 +271,9 @@ public class ChannelService {
 		}
 
 		userChannelRepository.deleteByUserIdAndChannelId(userId.id(), channelId.id());
+		cacheService.delete(List.of(
+			cacheService.buildKey(KeyPrefix.CHANNEL, channelEntity.getInviteCode()),
+			cacheService.buildKey(KeyPrefix.CHANNELS, userId.id().toString())));
 		return ResultType.SUCCESS;
 	}
 }

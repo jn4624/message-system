@@ -1,10 +1,12 @@
 package com.message.service;
 
+import java.util.List;
 import java.util.function.Function;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.message.constant.KeyPrefix;
 import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.UserId;
 import com.message.entity.UserConnectionEntity;
@@ -17,6 +19,7 @@ import jakarta.persistence.EntityNotFoundException;
 @Service
 public class UserConnectionLimitService {
 
+	private final CacheService cacheService;
 	private final UserRepository userRepository;
 	private final UserConnectionRepository userConnectionRepository;
 
@@ -26,8 +29,12 @@ public class UserConnectionLimitService {
 	 */
 	private int limitConnections = 1_000;
 
-	public UserConnectionLimitService(UserRepository userRepository,
-		UserConnectionRepository userConnectionRepository) {
+	public UserConnectionLimitService(
+		CacheService cacheService,
+		UserRepository userRepository,
+		UserConnectionRepository userConnectionRepository
+	) {
+		this.cacheService = cacheService;
 		this.userRepository = userRepository;
 		this.userConnectionRepository = userConnectionRepository;
 	}
@@ -72,6 +79,14 @@ public class UserConnectionLimitService {
 		secondUserEntity.setConnectionCount(secondUserConnectionCount + 1);
 
 		userConnectionEntity.setStatus(UserConnectionStatus.ACCEPTED);
+
+		cacheService.delete(List.of(
+			cacheService.buildKey(
+				KeyPrefix.CONNECTION_STATUS, String.valueOf(firstUserId), String.valueOf(secondUserId)),
+			cacheService.buildKey(
+				KeyPrefix.CONNECTIONS_STATUS, accepterUserId.id().toString(), UserConnectionStatus.ACCEPTED.name()),
+			cacheService.buildKey(
+				KeyPrefix.CONNECTIONS_STATUS, inviterUserId.id().toString(), UserConnectionStatus.ACCEPTED.name())));
 	}
 
 	@Transactional
@@ -102,5 +117,13 @@ public class UserConnectionLimitService {
 		secondUserEntity.setConnectionCount(secondUserConnectionCount - 1);
 
 		userConnectionEntity.setStatus(UserConnectionStatus.DISCONNECTED);
+
+		cacheService.delete(List.of(
+			cacheService.buildKey(
+				KeyPrefix.CONNECTION_STATUS, String.valueOf(firstUserId), String.valueOf(secondUserId)),
+			cacheService.buildKey(
+				KeyPrefix.CONNECTIONS_STATUS, senderUserId.id().toString(), UserConnectionStatus.DISCONNECTED.name()),
+			cacheService.buildKey(
+				KeyPrefix.CONNECTIONS_STATUS, partnerUserId.id().toString(), UserConnectionStatus.DISCONNECTED.name())));
 	}
 }

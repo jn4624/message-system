@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import com.message.constant.KeyPrefix;
 import com.message.constant.UserConnectionStatus;
 import com.message.dto.domain.InviteCode;
 import com.message.dto.domain.User;
@@ -19,6 +20,7 @@ import com.message.dto.domain.UserId;
 import com.message.dto.projection.UserIdUsernameInviterUserIdProjection;
 import com.message.entity.UserConnectionEntity;
 import com.message.repository.UserConnectionRepository;
+import com.message.util.JsonUtil;
 
 @Service
 public class UserConnectionService {
@@ -27,16 +29,23 @@ public class UserConnectionService {
 
 	private final UserService userService;
 	private final UserConnectionLimitService userConnectionLimitService;
+	private final CacheService cacheService;
 	private final UserConnectionRepository userConnectionRepository;
+	private final JsonUtil jsonUtil;
+	private final long TTL = 600;
 
 	public UserConnectionService(
 		UserService userService,
 		UserConnectionLimitService userConnectionLimitService,
-		UserConnectionRepository userConnectionRepository
+		CacheService cacheService,
+		UserConnectionRepository userConnectionRepository,
+		JsonUtil jsonUtil
 	) {
 		this.userService = userService;
 		this.userConnectionLimitService = userConnectionLimitService;
+		this.cacheService = cacheService;
 		this.userConnectionRepository = userConnectionRepository;
+		this.jsonUtil = jsonUtil;
 	}
 
 	/*
@@ -46,21 +55,35 @@ public class UserConnectionService {
 	 */
 	@Transactional(readOnly = true)
 	public List<User> getUsersByStatus(UserId userId, UserConnectionStatus status) {
+		String key = cacheService.buildKey(KeyPrefix.CONNECTIONS_STATUS, userId.id().toString(), status.name());
+		Optional<String> cachedUsers = cacheService.get(key);
+
+		if (cachedUsers.isPresent()) {
+			return jsonUtil.fromJsonToList(cachedUsers.get(), User.class);
+		}
+
 		List<UserIdUsernameInviterUserIdProjection> usersA =
 			userConnectionRepository.findByPartnerAUserIdAndStatus(userId.id(), status);
 		List<UserIdUsernameInviterUserIdProjection> usersB =
 			userConnectionRepository.findByPartnerBUserIdAndStatus(userId.id(), status);
 
+		List<User> findUsers;
 		if (status == UserConnectionStatus.ACCEPTED) {
-			return Stream.concat(usersA.stream(), usersB.stream())
+			findUsers = Stream.concat(usersA.stream(), usersB.stream())
 				.map(item ->
 					new User(new UserId(item.getUserId()), item.getUsername())).toList();
 		} else {
-			return Stream.concat(usersA.stream(), usersB.stream())
+			findUsers = Stream.concat(usersA.stream(), usersB.stream())
 				.filter(item -> !item.getInviterUserId().equals(userId.id()))
 				.map(item ->
 					new User(new UserId(item.getUserId()), item.getUsername())).toList();
 		}
+
+		if (!findUsers.isEmpty()) {
+			jsonUtil.toJson(findUsers)
+				.ifPresent(json -> cacheService.set(key, json, TTL));
+		}
+		return findUsers;
 	}
 
 	@Transactional(readOnly = true)
@@ -90,7 +113,8 @@ public class UserConnectionService {
 		return switch (userConnectionStatus) {
 			case NONE, DISCONNECTED -> {
 				if (userService.getConnectionCount(inviterUserId)
-					.filter(count -> count >= userConnectionLimitService.getLimitConnections()).isPresent()) {
+					.filter(count ->
+						count >= userConnectionLimitService.getLimitConnections()).isPresent()) {
 					yield Pair.of(Optional.empty(), "Connection limit reached");
 				}
 
@@ -144,8 +168,9 @@ public class UserConnectionService {
 			return Pair.of(Optional.empty(), "Can't self accept");
 		}
 
-		if (getInviterUserId(accepterUserId, inviterUserId).filter(invitationSenderUserId ->
-			invitationSenderUserId.equals(inviterUserId)).isEmpty()) {
+		if (getInviterUserId(accepterUserId, inviterUserId)
+			.filter(invitationSenderUserId ->
+				invitationSenderUserId.equals(inviterUserId)).isEmpty()) {
 			return Pair.of(Optional.empty(), "Invalid username");
 		}
 
@@ -240,19 +265,45 @@ public class UserConnectionService {
 
 	@Transactional(readOnly = true)
 	private Optional<UserId> getInviterUserId(UserId parterAUserId, UserId parterBUserId) {
-		return userConnectionRepository.findInviterUserIdByPartnerAUserIdAndPartnerBUserId(
-				Long.min(parterAUserId.id(), parterBUserId.id()),
-				Long.max(parterAUserId.id(), parterBUserId.id()))
-			.map(inviterUserIdProjection -> new UserId(inviterUserIdProjection.getInviterUserId()));
+		long partnerA = Long.min(parterAUserId.id(), parterBUserId.id());
+		long partnerB = Long.max(parterAUserId.id(), parterBUserId.id());
+
+		String key = cacheService.buildKey(
+			KeyPrefix.INVITER_USER_ID, String.valueOf(partnerA), String.valueOf(partnerB));
+		Optional<String> cachedInviterUserId = cacheService.get(key);
+
+		if (cachedInviterUserId.isPresent()) {
+			return Optional.of(new UserId(Long.parseLong(cachedInviterUserId.get())));
+		}
+
+		Optional<UserId> findInviterUserId =
+			userConnectionRepository.findInviterUserIdByPartnerAUserIdAndPartnerBUserId(partnerA, partnerB)
+				.map(inviterUserIdProjection ->
+					new UserId(inviterUserIdProjection.getInviterUserId()));
+		findInviterUserId.ifPresent(userId -> cacheService.set(key, userId.id().toString(), TTL));
+		return findInviterUserId;
 	}
 
 	@Transactional(readOnly = true)
 	private UserConnectionStatus getStatus(UserId inviterUserId, UserId partnerUserId) {
-		return userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(
-				Long.min(inviterUserId.id(), partnerUserId.id()),
-				Long.max(inviterUserId.id(), partnerUserId.id()))
-			.map(status -> UserConnectionStatus.valueOf(status.getStatus()))
-			.orElse(UserConnectionStatus.NONE);
+		long partnerA = Long.min(inviterUserId.id(), partnerUserId.id());
+		long partnerB = Long.max(inviterUserId.id(), partnerUserId.id());
+
+		String key = cacheService.buildKey(
+			KeyPrefix.CONNECTION_STATUS, String.valueOf(partnerA), String.valueOf(partnerB));
+		Optional<String> cachedUserConnectionStatus = cacheService.get(key);
+
+		if (cachedUserConnectionStatus.isPresent()) {
+			return UserConnectionStatus.valueOf(cachedUserConnectionStatus.get());
+		}
+
+		UserConnectionStatus findConnectionStatus =
+			userConnectionRepository.findUserConnectionStatusByPartnerAUserIdAndPartnerBUserId(partnerA, partnerB)
+				.map(status ->
+					UserConnectionStatus.valueOf(status.getStatus()))
+				.orElse(UserConnectionStatus.NONE);
+		cacheService.set(key, findConnectionStatus.name(), TTL);
+		return findConnectionStatus;
 	}
 
 	@Transactional
@@ -261,10 +312,18 @@ public class UserConnectionService {
 			throw new IllegalArgumentException("Can't set to accepted");
 		}
 
-		userConnectionRepository.save(new UserConnectionEntity(
-			Long.min(inviterUserId.id(), partnerUserId.id()),
-			Long.max(inviterUserId.id(), partnerUserId.id()),
-			userConnectionStatus,
-			inviterUserId.id()));
+		long partnerA = Long.min(inviterUserId.id(), partnerUserId.id());
+		long partnerB = Long.max(inviterUserId.id(), partnerUserId.id());
+
+		userConnectionRepository.save(
+			new UserConnectionEntity(partnerA, partnerB, userConnectionStatus, inviterUserId.id()));
+
+		cacheService.delete(List.of(
+			cacheService.buildKey(
+				KeyPrefix.CONNECTION_STATUS, String.valueOf(partnerA), String.valueOf(partnerB)),
+			cacheService.buildKey(
+				KeyPrefix.CONNECTIONS_STATUS, inviterUserId.id().toString(), userConnectionStatus.name()),
+			cacheService.buildKey(
+				KeyPrefix.CONNECTIONS_STATUS, partnerUserId.id().toString(), userConnectionStatus.name())));
 	}
 }

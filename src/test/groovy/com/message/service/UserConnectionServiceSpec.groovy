@@ -1,5 +1,6 @@
 package com.message.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.message.constant.UserConnectionStatus
 import com.message.dto.domain.InviteCode
 import com.message.dto.domain.User
@@ -10,6 +11,7 @@ import com.message.entity.UserConnectionEntity
 import com.message.entity.UserEntity
 import com.message.repository.UserConnectionRepository
 import com.message.repository.UserRepository
+import com.message.util.JsonUtil
 import org.springframework.data.util.Pair
 import spock.lang.Specification
 
@@ -19,12 +21,14 @@ class UserConnectionServiceSpec extends Specification {
     UserConnectionService userConnectionService
     UserConnectionLimitService userConnectionLimitService
     UserService userService = Stub()
+    CacheService cacheService = Stub()
     UserRepository userRepository = Stub()
     UserConnectionRepository userConnectionRepository = Stub()
 
     def setup() {
-        userConnectionLimitService = new UserConnectionLimitService(userRepository, userConnectionRepository)
-        userConnectionService = new UserConnectionService(userService, userConnectionLimitService, userConnectionRepository)
+        userConnectionLimitService = new UserConnectionLimitService(cacheService, userRepository, userConnectionRepository)
+        userConnectionService = new UserConnectionService(
+                userService, userConnectionLimitService, cacheService, userConnectionRepository, new JsonUtil(new ObjectMapper()))
     }
 
     def "사용자 연결 신청에 대한 테스트."() {
